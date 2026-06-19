@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check-in Online</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1B4F72;
+      --primary-l: #2471A3;
+      --accent: #C9A84C;
+      --bg: #F4F6F9;
+      --border: #E2E8F0;
+      --text: #1A202C;
+      --muted: #64748B;
+      --success: #16A34A;
+      --danger: #DC2626;
+      --radius: 14px;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+    .hero { background: linear-gradient(135deg, var(--primary), var(--primary-l)); padding: 28px 20px; text-align: center; color: white; }
+    .hero img { width: 52px; height: 52px; border-radius: 12px; margin-bottom: 10px; }
+    .hero h1 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+    .hero p { opacity: .8; font-size: 13px; }
+
+    .container { max-width: 560px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    .card { background: white; border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,.07); border: 1px solid var(--border); }
+    .card-title { font-size: 15px; font-weight: 800; margin-bottom: 16px; color: var(--primary); }
+
+    .soggiorno-box { background: linear-gradient(135deg, #EBF5FB, #f0f9ff); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .soggiorno-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; }
+    .soggiorno-row span:first-child { color: var(--muted); }
+    .soggiorno-row span:last-child { font-weight: 700; }
+
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+    input, select { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; outline: none; background: white; transition: border-color .2s; }
+    input:focus, select:focus { border-color: var(--primary); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Ospiti aggiuntivi */
+    .ospite-row { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+    .ospite-row-title { font-weight: 700; font-size: 13px; margin-bottom: 10px; color: var(--primary); }
+
+    /* Firma */
+    canvas { border: 1.5px solid var(--border); border-radius: 10px; width: 100%; touch-action: none; cursor: crosshair; }
+    .firma-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all .15s; font-family: inherit; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-l); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-ghost { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 8px 14px; width: auto; font-size: 13px; border-radius: 8px; }
+
+    .steps { display: flex; gap: 0; margin-bottom: 20px; }
+    .step { flex: 1; text-align: center; padding: 8px 4px; font-size: 11px; font-weight: 700; color: var(--muted); border-bottom: 3px solid var(--border); }
+    .step.active { color: var(--primary); border-color: var(--primary); }
+    .step.done { color: var(--success); border-color: var(--success); }
+
+    .error { color: var(--danger); font-size: 13px; margin-top: 6px; }
+    .success-box { text-align: center; padding: 40px 20px; }
+    .success-box .icon { font-size: 64px; margin-bottom: 16px; }
+
+    .loading { text-align: center; padding: 60px 20px; color: var(--muted); }
+
+    @media (max-width: 480px) { .grid-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<div class="hero" id="hero">
+  <img src="../assets/favicon-192.png" alt="" onerror="this.style.display='none'">
+  <h1>Check-in Online</h1>
+  <p id="hotel-nome">Completa il check-in prima di arrivare</p>
+</div>
+
+<div class="container">
+  <div id="loading" class="loading">⏳ Caricamento...</div>
+  <div id="main-content" style="display:none;"></div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabase = createClient(
+    "https://cuhcscpvhypoaplcmtjk.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1aGNzY3B2aHlwb2FwbGNtdGprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MjY4MjgsImV4cCI6MjA3OTQwMjgyOH0.q9zAs0oh8F1-whtORHBIORF5jIn1NTS3LvSMWleP0a0"
+  );
+
+  const params  = new URLSearchParams(window.location.search);
+  const token   = params.get("token");
+  const content = document.getElementById("main-content");
+  const loading = document.getElementById("loading");
+
+  if (!token) {
+    loading.innerHTML = '<div style="text-align:center;padding:40px;"><div style="font-size:40px;">❌</div><p style="margin-top:12px;color:#64748b;">Link non valido o scaduto</p></div>';
+    loading.style.display = "";
+    throw new Error("No token");
+  }
+
+  // Carica prenotazione dal token
+  const { data: pren, error } = await supabase
+    .from("hotel_prenotazioni")
+    .select("*, hotel_camere(nome,tipologia), aziende(nome,logo_url,indirizzo)")
+    .eq("checkin_online_token", token)
+    .single();
+
+  if (error || !pren) {
+    loading.innerHTML = '<div style="text-align:center;padding:40px;"><div style="font-size:40px;">❌</div><p style="margin-top:12px;color:#64748b;">Prenotazione non trovata</p></div>';
+    loading.style.display = "";
+    throw new Error("Not found");
+  }
+
+  // Già completato
+  if (pren.checkin_online_completato) {
+    loading.style.display = "none";
+    content.style.display = "";
+    content.innerHTML = `
+      <div class="card success-box">
+        <div class="icon">✅</div>
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:8px;">Check-in già completato</h2>
+        <p style="color:var(--muted);">Benvenuto/a ${pren.ospite_nome}! Ti aspettiamo il ${formatData(pren.data_checkin)}.</p>
+      </div>`;
+    return;
+  }
+
+  document.getElementById("hotel-nome").textContent = pren.aziende?.nome || "";
+  if (pren.aziende?.logo_url) document.querySelector(".hero img").src = pren.aziende.logo_url;
+
+  loading.style.display = "none";
+  content.style.display = "";
+
+  const notti = Math.round((new Date(pren.data_checkout) - new Date(pren.data_checkin)) / 86400000);
+  const adulti = pren.adulti || 1;
+  let firmaData = null;
+
+  content.innerHTML = `
+    <!-- Steps -->
+    <div class="steps">
+      <div class="step active" id="step-1">1. Soggiorno</div>
+      <div class="step" id="step-2">2. Documento</div>
+      <div class="step" id="step-3">3. Ospiti</div>
+      <div class="step" id="step-4">4. Firma</div>
+    </div>
+
+    <!-- STEP 1: Riepilogo soggiorno -->
+    <div id="box-step-1">
+      <div class="card">
+        <div class="card-title">🏨 Il tuo soggiorno</div>
+        <div class="soggiorno-box">
+          <div class="soggiorno-row"><span>Ospite</span><span>${pren.ospite_nome} ${pren.ospite_cognome}</span></div>
+          <div class="soggiorno-row"><span>Camera</span><span>${pren.hotel_camere?.nome || "—"}</span></div>
+          <div class="soggiorno-row"><span>Check-in</span><span>${formatData(pren.data_checkin)} ore ${pren.ora_checkin_prevista || "14:00"}</span></div>
+          <div class="soggiorno-row"><span>Check-out</span><span>${formatData(pren.data_checkout)} ore ${pren.ora_checkout_prevista || "11:00"}</span></div>
+          <div class="soggiorno-row"><span>Notti</span><span>${notti}</span></div>
+          <div class="soggiorno-row"><span>Adulti</span><span>${adulti}</span></div>
+          ${pren.prezzo_totale ? `<div class="soggiorno-row"><span>Totale</span><span style="color:var(--primary);font-weight:800;">€ ${pren.prezzo_totale.toFixed(2)}</span></div>` : ""}
+        </div>
+        ${pren.richieste_speciali ? `<div style="background:#fef9c3;border-radius:10px;padding:12px;font-size:13px;margin-bottom:12px;"><strong>⭐ Tue richieste:</strong> ${pren.richieste_speciali}</div>` : ""}
+        <button class="btn btn-primary" id="btn-1-2">Inizia check-in →</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Documento -->
+    <div id="box-step-2" style="display:none;">
+      <div class="card">
+        <div class="card-title">🪪 Documento d'identità</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Inserisci i dati del tuo documento. Verranno usati solo per le comunicazioni obbligatorie alle autorità.</p>
+        <div class="form-group">
+          <label>Tipo documento *</label>
+          <select id="doc-tipo">
+            <option value="">Seleziona...</option>
+            <option value="carta_identita" ${pren.ospite_documento_tipo === "carta_identita" ? "selected" : ""}>Carta d'identità</option>
+            <option value="passaporto" ${pren.ospite_documento_tipo === "passaporto" ? "selected" : ""}>Passaporto</option>
+            <option value="patente" ${pren.ospite_documento_tipo === "patente" ? "selected" : ""}>Patente</option>
+          </select>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Numero documento *</label>
+            <input id="doc-num" value="${pren.ospite_documento_num || ""}" placeholder="Es. AX1234567">
+          </div>
+          <div class="form-group">
+            <label>Scadenza</label>
+            <input id="doc-scad" type="date" value="${pren.ospite_documento_scad || ""}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Nazione</label>
+          <select id="doc-nazione">
+            <option value="IT" ${(pren.ospite_nazione||"IT") === "IT" ? "selected" : ""}>🇮🇹 Italia</option>
+            <option value="DE" ${pren.ospite_nazione === "DE" ? "selected" : ""}>🇩🇪 Germania</option>
+            <option value="FR" ${pren.ospite_nazione === "FR" ? "selected" : ""}>🇫🇷 Francia</option>
+            <option value="GB" ${pren.ospite_nazione === "GB" ? "selected" : ""}>🇬🇧 UK</option>
+            <option value="US" ${pren.ospite_nazione === "US" ? "selected" : ""}>🇺🇸 USA</option>
+            <option value="ES" ${pren.ospite_nazione === "ES" ? "selected" : ""}>🇪🇸 Spagna</option>
+            <option value="CH" ${pren.ospite_nazione === "CH" ? "selected" : ""}>🇨🇭 Svizzera</option>
+            <option value="AT" ${pren.ospite_nazione === "AT" ? "selected" : ""}>🇦🇹 Austria</option>
+            <option value="altro">Altro</option>
+          </select>
+        </div>
+        <div id="err-doc" class="error"></div>
+        <button class="btn btn-primary" id="btn-2-3">Continua →</button>
+      </div>
+      <button class="btn btn-ghost" onclick="setStep(1)" style="margin-top:8px;">← Indietro</button>
+    </div>
+
+    <!-- STEP 3: Ospiti aggiuntivi -->
+    <div id="box-step-3" style="display:none;">
+      <div class="card">
+        <div class="card-title">👥 Ospiti aggiuntivi</div>
+        ${adulti <= 1
+          ? `<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Soggiorno per 1 adulto — nessun ospite aggiuntivo.</p>`
+          : `<p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Compila i dati degli altri ospiti (opzionale ma consigliato).</p>
+             <div id="ospiti-aggiuntivi">
+               ${Array.from({length: adulti - 1}, (_, i) => `
+                 <div class="ospite-row">
+                   <div class="ospite-row-title">👤 Ospite ${i + 2}</div>
+                   <div class="grid-2">
+                     <div class="form-group">
+                       <label>Nome</label>
+                       <input class="osp-nome" placeholder="Nome">
+                     </div>
+                     <div class="form-group">
+                       <label>Cognome</label>
+                       <input class="osp-cognome" placeholder="Cognome">
+                     </div>
+                   </div>
+                   <div class="grid-2">
+                     <div class="form-group">
+                       <label>Tipo documento</label>
+                       <select class="osp-doc-tipo">
+                         <option value="">—</option>
+                         <option value="carta_identita">Carta d'identità</option>
+                         <option value="passaporto">Passaporto</option>
+                         <option value="patente">Patente</option>
+                       </select>
+                     </div>
+                     <div class="form-group">
+                       <label>Numero documento</label>
+                       <input class="osp-doc-num" placeholder="Numero">
+                     </div>
+                   </div>
+                 </div>
+               `).join("")}
+             </div>`
+        }
+        <button class="btn btn-primary" id="btn-3-4">Continua →</button>
+      </div>
+      <button class="btn btn-ghost" onclick="setStep(2)" style="margin-top:8px;">← Indietro</button>
+    </div>
+
+    <!-- STEP 4: Firma -->
+    <div id="box-step-4" style="display:none;">
+      <div class="card">
+        <div class="card-title">✍️ Firma digitale</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Firma qui sotto per accettare il regolamento della struttura.</p>
+        <div style="background:#fef9c3;border-radius:10px;padding:12px;font-size:12px;margin-bottom:14px;color:#92400e;">
+          📋 Confermo di aver letto e accettato il regolamento interno della struttura. Autorizzo il trattamento dei dati personali ai fini del soggiorno e delle comunicazioni obbligatorie alle autorità competenti.
+        </div>
+        <canvas id="firma-canvas" width="520" height="160"></canvas>
+        <div class="firma-actions">
+          <button class="btn btn-ghost" id="btn-cancella-firma">🗑 Cancella</button>
+          <span style="flex:1;"></span>
+          <span style="font-size:11px;color:var(--muted);align-self:center;">Firma con il dito o il mouse</span>
+        </div>
+        <div id="err-firma" class="error" style="margin-top:8px;"></div>
+        <button class="btn btn-primary" id="btn-completa" style="margin-top:16px;">✅ Completa check-in</button>
+      </div>
+      <button class="btn btn-ghost" onclick="setStep(3)" style="margin-top:8px;">← Indietro</button>
+    </div>
+
+    <!-- SUCCESSO -->
+    <div id="box-successo" style="display:none;">
+      <div class="card success-box">
+        <div class="icon">🎉</div>
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:8px;">Check-in completato!</h2>
+        <p style="color:var(--muted);line-height:1.6;">
+          Grazie ${pren.ospite_nome}! Il tuo check-in è stato registrato.<br>
+          Ti aspettiamo il <strong>${formatData(pren.data_checkin)}</strong> dalle <strong>${pren.ora_checkin_prevista || "14:00"}</strong>.
+        </p>
+        <div style="margin-top:20px;padding:16px;background:var(--bg);border-radius:12px;font-size:13px;text-align:left;">
+          🏨 <strong>${pren.hotel_camere?.nome || ""}</strong><br>
+          📍 ${pren.aziende?.indirizzo || ""}<br><br>
+          <span style="color:var(--muted);">Per qualsiasi necessità contattaci — ti aspettiamo! 🙏</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ── Navigazione step ──
+  window.setStep = (n) => {
+    [1,2,3,4].forEach(i => {
+      document.getElementById(`box-step-${i}`).style.display = i === n ? "" : "none";
+      const el = document.getElementById(`step-${i}`);
+      if (el) {
+        el.classList.toggle("active", i === n);
+        el.classList.toggle("done", i < n);
+      }
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  document.getElementById("btn-1-2").onclick = () => setStep(2);
+
+  document.getElementById("btn-2-3").onclick = () => {
+    const tipo = document.getElementById("doc-tipo").value;
+    const num  = document.getElementById("doc-num").value.trim();
+    const err  = document.getElementById("err-doc");
+    if (!tipo) { err.textContent = "Seleziona il tipo di documento"; return; }
+    if (!num)  { err.textContent = "Inserisci il numero del documento"; return; }
+    err.textContent = "";
+    setStep(3);
+  };
+
+  document.getElementById("btn-3-4").onclick = () => setStep(4);
+
+  // ── Canvas firma ──
+  const canvas = document.getElementById("firma-canvas");
+  const ctx = canvas.getContext("2d");
+  let drawing = false;
+  let firmataAlmeno = false;
+
+  // Adatta canvas a DPI
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width  = canvas.offsetWidth  * ratio;
+  canvas.height = 160 * ratio;
+  ctx.scale(ratio, ratio);
+  ctx.strokeStyle = "#1B4F72";
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - r.left), y: (src.clientY - r.top) };
+  }
+
+  canvas.addEventListener("mousedown",  e => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); });
+  canvas.addEventListener("mousemove",  e => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); firmataAlmeno = true; });
+  canvas.addEventListener("mouseup",    () => drawing = false);
+  canvas.addEventListener("mouseleave", () => drawing = false);
+  canvas.addEventListener("touchstart", e => { e.preventDefault(); drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); }, { passive: false });
+  canvas.addEventListener("touchmove",  e => { e.preventDefault(); if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); firmataAlmeno = true; }, { passive: false });
+  canvas.addEventListener("touchend",   () => drawing = false);
+
+  document.getElementById("btn-cancella-firma").onclick = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    firmataAlmeno = false;
+  };
+
+  // ── Completa check-in ──
+  document.getElementById("btn-completa").onclick = async () => {
+    const err = document.getElementById("err-firma");
+    if (!firmataAlmeno) { err.textContent = "Firma richiesta per completare il check-in"; return; }
+    err.textContent = "";
+
+    const btn = document.getElementById("btn-completa");
+    btn.disabled = true; btn.textContent = "Salvataggio...";
+
+    // Raccoglie ospiti aggiuntivi
+    const ospAgg = [];
+    document.querySelectorAll(".ospite-row").forEach(row => {
+      const nome = row.querySelector(".osp-nome")?.value.trim();
+      const cognome = row.querySelector(".osp-cognome")?.value.trim();
+      if (nome || cognome) {
+        ospAgg.push({
+          nome,
+          cognome,
+          documento_tipo: row.querySelector(".osp-doc-tipo")?.value || null,
+          documento_num:  row.querySelector(".osp-doc-num")?.value.trim() || null,
+        });
+      }
+    });
+
+    const { error } = await supabase.from("hotel_prenotazioni").update({
+      ospite_documento_tipo:  document.getElementById("doc-tipo").value,
+      ospite_documento_num:   document.getElementById("doc-num").value.trim(),
+      ospite_documento_scad:  document.getElementById("doc-scad").value || null,
+      ospite_nazione:         document.getElementById("doc-nazione").value,
+      ospiti_aggiuntivi:      ospAgg,
+      checkin_online_completato: true,
+      checkin_online_at:      new Date().toISOString(),
+      updated_at:             new Date().toISOString(),
+    }).eq("checkin_online_token", token);
+
+    if (error) {
+      err.textContent = "Errore: " + error.message;
+      btn.disabled = false; btn.textContent = "✅ Completa check-in";
+      return;
+    }
+
+    // Mostra successo
+    [1,2,3,4].forEach(i => { document.getElementById(`box-step-${i}`).style.display = "none"; });
+    document.getElementById("box-successo").style.display = "";
+    [1,2,3,4].forEach(i => { document.getElementById(`step-${i}`)?.classList.add("done"); });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  function formatData(d) {
+    if (!d) return "—";
+    const [y,m,g] = d.split("-"); return `${g}/${m}/${y}`;
+  }
+</script>
+</body>
+</html>
