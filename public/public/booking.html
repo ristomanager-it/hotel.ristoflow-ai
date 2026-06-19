@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prenota — Ristoflow Hotel</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1B4F72;
+      --primary-l: #2471A3;
+      --accent: #C9A84C;
+      --bg: #F4F6F9;
+      --border: #E2E8F0;
+      --text: #1A202C;
+      --muted: #64748B;
+      --success: #16A34A;
+      --danger: #DC2626;
+      --radius: 14px;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+    .hero { background: linear-gradient(135deg, var(--primary), var(--primary-l)); padding: 32px 20px; text-align: center; color: white; }
+    .hero img { width: 60px; height: 60px; border-radius: 14px; margin-bottom: 12px; }
+    .hero h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+    .hero p { opacity: .8; font-size: 14px; }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    .card { background: white; border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,.07); border: 1px solid var(--border); }
+    .card-title { font-size: 15px; font-weight: 800; margin-bottom: 16px; color: var(--primary); }
+
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+    input, select, textarea { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; outline: none; background: white; transition: border-color .2s; }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Camere */
+    .camera-card { border: 2px solid var(--border); border-radius: 12px; padding: 14px; cursor: pointer; transition: all .15s; margin-bottom: 10px; }
+    .camera-card:hover { border-color: var(--primary); }
+    .camera-card.selected { border-color: var(--primary); background: #EBF5FB; }
+    .camera-card.occupata { opacity: .4; cursor: not-allowed; background: #f8fafc; }
+    .camera-foto { width: 100%; height: 160px; object-fit: cover; border-radius: 8px; margin-bottom:10px; background: var(--bg); display:flex; align-items:center; justify-content:center; font-size:40px; }
+    .camera-nome { font-weight: 800; font-size: 15px; margin-bottom: 4px; }
+    .camera-info { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .camera-servizi { display: flex; flex-wrap: wrap; gap: 4px; }
+    .servizio-tag { font-size: 10px; padding: 2px 8px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); }
+    .camera-prezzo { font-size: 18px; font-weight: 800; color: var(--primary); margin-top: 8px; }
+
+    /* Steps */
+    .steps { display: flex; gap: 0; margin-bottom: 24px; }
+    .step { flex: 1; text-align: center; padding: 10px 4px; font-size: 12px; font-weight: 700; color: var(--muted); border-bottom: 3px solid var(--border); transition: all .2s; }
+    .step.active { color: var(--primary); border-color: var(--primary); }
+    .step.done { color: var(--success); border-color: var(--success); }
+
+    /* Riepilogo prezzi */
+    .price-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+    .price-row.total { border-top: 2px solid var(--border); margin-top: 8px; padding-top: 10px; font-weight: 800; font-size: 16px; color: var(--primary); }
+
+    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all .15s; font-family: inherit; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-l); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-ghost { background: var(--bg); color: var(--text); border: 1px solid var(--border); margin-bottom: 10px; }
+
+    .error { color: var(--danger); font-size: 13px; margin-top: 6px; }
+    .success-box { text-align: center; padding: 40px 20px; }
+    .success-box .icon { font-size: 64px; margin-bottom: 16px; }
+    .success-box h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+    .success-box p { color: var(--muted); line-height: 1.6; }
+
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .badge-green { background: #DCFCE7; color: #15803D; }
+    .badge-red { background: #FEE2E2; color: #DC2626; }
+
+    @media (max-width: 480px) { .grid-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<div class="hero" id="hero">
+  <img src="../assets/favicon-192.png" alt="Logo" onerror="this.style.display='none'">
+  <h1 id="hotel-nome">Prenota la tua camera</h1>
+  <p id="hotel-indirizzo"></p>
+</div>
+
+<div class="container">
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" id="step-1">1. Date</div>
+    <div class="step" id="step-2">2. Camera</div>
+    <div class="step" id="step-3">3. Dati</div>
+    <div class="step" id="step-4">4. Conferma</div>
+  </div>
+
+  <!-- STEP 1: Date e ospiti -->
+  <div id="box-step-1">
+    <div class="card">
+      <div class="card-title">📅 Quando vuoi soggiornare?</div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Check-in *</label>
+          <input type="date" id="b-checkin" min="">
+        </div>
+        <div class="form-group">
+          <label>Check-out *</label>
+          <input type="date" id="b-checkout" min="">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Adulti</label>
+          <select id="b-adulti">
+            <option value="1">1 adulto</option>
+            <option value="2" selected>2 adulti</option>
+            <option value="3">3 adulti</option>
+            <option value="4">4 adulti</option>
+            <option value="5">5 adulti</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Bambini</label>
+          <select id="b-bambini">
+            <option value="0" selected>Nessuno</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </div>
+      </div>
+      <div id="err-date" class="error"></div>
+      <button class="btn btn-primary" id="btn-cerca-camere">Cerca camere disponibili →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Selezione camera -->
+  <div id="box-step-2" style="display:none;">
+    <div id="camere-disponibili"></div>
+    <button class="btn btn-ghost" id="btn-back-1">← Modifica date</button>
+  </div>
+
+  <!-- STEP 3: Dati ospite -->
+  <div id="box-step-3" style="display:none;">
+    <div class="card">
+      <div class="card-title">👤 I tuoi dati</div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Nome *</label>
+          <input type="text" id="b-nome" placeholder="Mario">
+        </div>
+        <div class="form-group">
+          <label>Cognome *</label>
+          <input type="text" id="b-cognome" placeholder="Rossi">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" id="b-email" placeholder="mario@email.it">
+        </div>
+        <div class="form-group">
+          <label>Telefono *</label>
+          <input type="tel" id="b-telefono" placeholder="+39 333 1234567">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Nazione</label>
+        <select id="b-nazione">
+          <option value="IT" selected>🇮🇹 Italia</option>
+          <option value="DE">🇩🇪 Germania</option>
+          <option value="FR">🇫🇷 Francia</option>
+          <option value="GB">🇬🇧 Regno Unito</option>
+          <option value="US">🇺🇸 USA</option>
+          <option value="ES">🇪🇸 Spagna</option>
+          <option value="CH">🇨🇭 Svizzera</option>
+          <option value="AT">🇦🇹 Austria</option>
+          <option value="NL">🇳🇱 Olanda</option>
+          <option value="altro">Altro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Richieste speciali (opzionale)</label>
+        <textarea id="b-richieste" placeholder="Es. camera al piano alto, culla per bambino, arrivo tardivo..."></textarea>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:10px;">
+        <input type="checkbox" id="b-privacy" style="margin-top:3px;flex-shrink:0;width:auto;">
+        <label for="b-privacy" style="font-size:12px;color:var(--muted);line-height:1.5;margin:0;">
+          Accetto il trattamento dei dati personali per la gestione della prenotazione secondo la normativa GDPR.
+        </label>
+      </div>
+      <div id="err-dati" class="error"></div>
+      <button class="btn btn-primary" id="btn-vai-conferma">Continua →</button>
+    </div>
+    <button class="btn btn-ghost" id="btn-back-2">← Cambia camera</button>
+  </div>
+
+  <!-- STEP 4: Riepilogo e conferma -->
+  <div id="box-step-4" style="display:none;">
+    <div class="card">
+      <div class="card-title">✅ Riepilogo prenotazione</div>
+      <div id="riepilogo-content"></div>
+      <div id="err-conferma" class="error"></div>
+      <button class="btn btn-primary" id="btn-conferma" style="margin-top:16px;">Conferma prenotazione 🎉</button>
+    </div>
+    <button class="btn btn-ghost" id="btn-back-3">← Modifica dati</button>
+  </div>
+
+  <!-- SUCCESSO -->
+  <div id="box-successo" style="display:none;">
+    <div class="card success-box">
+      <div class="icon">🎉</div>
+      <h2>Prenotazione confermata!</h2>
+      <p id="successo-testo"></p>
+      <div style="margin-top:20px;padding:16px;background:var(--bg);border-radius:12px;font-size:13px;" id="successo-dettagli"></div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const params = new URLSearchParams(window.location.search);
+  const aziendaId = params.get("az");
+
+  if (!aziendaId) {
+    document.querySelector(".container").innerHTML = '<div class="card" style="text-align:center;padding:40px;"><div style="font-size:40px;">❌</div><p style="margin-top:12px;color:#64748b;">Link non valido</p></div>';
+  }
+
+  // Stessa Supabase di Ristoflow
+  const supabase = createClient(
+    "https://cuhcscpvhypoaplcmtjk.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1aGNzY3B2aHlwb2FwbGNtdGprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MjY4MjgsImV4cCI6MjA3OTQwMjgyOH0.q9zAs0oh8F1-whtORHBIORF5jIn1NTS3LvSMWleP0a0"
+  );
+
+  let cameraSelezionata = null;
+  let prezzoCalcolato = 0;
+
+  // Carica dati hotel
+  const { data: az } = await supabase.from("aziende").select("nome,indirizzo,telefono,email_pubblica,logo_url").eq("id", aziendaId).single();
+  if (az) {
+    document.getElementById("hotel-nome").textContent = az.nome || "Prenota";
+    document.getElementById("hotel-indirizzo").textContent = az.indirizzo || "";
+    if (az.logo_url) document.querySelector(".hero img").src = az.logo_url;
+  }
+
+  // Date minime
+  const oggi = new Date().toISOString().split("T")[0];
+  document.getElementById("b-checkin").min = oggi;
+  document.getElementById("b-checkout").min = oggi;
+  document.getElementById("b-checkin").value = oggi;
+  const domani = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+  document.getElementById("b-checkout").value = domani;
+
+  // ── STEP 1 → 2: Cerca camere ──
+  document.getElementById("btn-cerca-camere").onclick = async () => {
+    const ci = document.getElementById("b-checkin").value;
+    const co = document.getElementById("b-checkout").value;
+    const err = document.getElementById("err-date");
+
+    if (!ci || !co) { err.textContent = "Inserisci le date"; return; }
+    if (co <= ci) { err.textContent = "Il check-out deve essere successivo al check-in"; return; }
+    err.textContent = "";
+
+    const btn = document.getElementById("btn-cerca-camere");
+    btn.disabled = true; btn.textContent = "Ricerca...";
+
+    // Trova camere occupate nel periodo
+    const { data: occupate } = await supabase
+      .from("hotel_prenotazioni")
+      .select("camera_id")
+      .eq("azienda_id", aziendaId)
+      .not("stato", "in", "(cancellata,noshow)")
+      .lt("data_checkin", co)
+      .gt("data_checkout", ci);
+
+    const idOccupate = new Set((occupate || []).map(r => r.camera_id));
+
+    // Carica tutte le camere
+    const { data: camere } = await supabase
+      .from("hotel_camere")
+      .select("*")
+      .eq("azienda_id", aziendaId)
+      .eq("attiva", true)
+      .order("ordine").order("nome");
+
+    // Carica tariffe
+    const { data: tariffe } = await supabase
+      .from("hotel_tariffe")
+      .select("*")
+      .eq("azienda_id", aziendaId)
+      .eq("attiva", true);
+
+    const notti = Math.round((new Date(co) - new Date(ci)) / 86400000);
+    const adulti = parseInt(document.getElementById("b-adulti").value);
+
+    const box = document.getElementById("camere-disponibili");
+    box.innerHTML = `
+      <div class="card">
+        <div class="card-title">🛏️ Camere disponibili — ${notti} notti</div>
+        ${(camere || []).map(c => {
+          const occ = idOccupate.has(c.id);
+          const prezzo = calcolaPrezzoCamera(c, tariffe || [], ci, co, adulti, notti);
+          const foto = (c.foto_urls || [])[0];
+
+          return `
+          <div class="camera-card ${occ ? "occupata" : ""}" data-id="${c.id}" data-prezzo="${prezzo}">
+            ${foto
+              ? `<img src="${foto}" class="camera-foto" onerror="this.innerHTML='🛏️'">`
+              : `<div class="camera-foto">🛏️</div>`
+            }
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div>
+                <div class="camera-nome">${c.nome}</div>
+                <div class="camera-info">
+                  ${c.tipologia ? c.tipologia + " · " : ""}
+                  ${c.dimensioni_mq ? c.dimensioni_mq + " m² · " : ""}
+                  👥 max ${c.ospiti_max || 2} ospiti
+                  ${occ ? ' · <span class="badge badge-red">Occupata</span>' : ' · <span class="badge badge-green">Disponibile</span>'}
+                </div>
+                ${c.descrizione ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${c.descrizione}</div>` : ""}
+                <div class="camera-servizi">
+                  ${(c.servizi || []).slice(0,5).map(s => `<span class="servizio-tag">${s.replace(/_/g," ")}</span>`).join("")}
+                  ${(c.servizi||[]).length > 5 ? `<span class="servizio-tag">+${c.servizi.length-5}</span>` : ""}
+                </div>
+              </div>
+              <div style="text-align:right;flex-shrink:0;margin-left:12px;">
+                <div class="camera-prezzo">€ ${prezzo.toFixed(2)}</div>
+                <div style="font-size:11px;color:var(--muted);">totale ${notti} notti</div>
+                <div style="font-size:11px;color:var(--muted);">€ ${(prezzo/notti).toFixed(2)}/notte</div>
+              </div>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    `;
+
+    // Click su camera
+    box.querySelectorAll(".camera-card:not(.occupata)").forEach(card => {
+      card.onclick = () => {
+        box.querySelectorAll(".camera-card").forEach(c => c.classList.remove("selected"));
+        card.classList.add("selected");
+        cameraSelezionata = (camere||[]).find(c => c.id === card.dataset.id);
+        prezzoCalcolato = parseFloat(card.dataset.prezzo);
+
+        // Vai step 3
+        setTimeout(() => {
+          setStep(3);
+        }, 300);
+      };
+    });
+
+    btn.disabled = false; btn.textContent = "Cerca camere disponibili →";
+    setStep(2);
+  };
+
+  // ── STEP 3 → 4: Dati ospite ──
+  document.getElementById("btn-vai-conferma").onclick = () => {
+    const nome     = document.getElementById("b-nome").value.trim();
+    const cognome  = document.getElementById("b-cognome").value.trim();
+    const email    = document.getElementById("b-email").value.trim();
+    const telefono = document.getElementById("b-telefono").value.trim();
+    const privacy  = document.getElementById("b-privacy").checked;
+    const err = document.getElementById("err-dati");
+
+    if (!nome)    { err.textContent = "Inserisci il nome"; return; }
+    if (!cognome) { err.textContent = "Inserisci il cognome"; return; }
+    if (!email)   { err.textContent = "Inserisci l'email"; return; }
+    if (!telefono){ err.textContent = "Inserisci il telefono"; return; }
+    if (!privacy) { err.textContent = "Accetta il trattamento dei dati per continuare"; return; }
+    err.textContent = "";
+
+    // Mostra riepilogo
+    const ci = document.getElementById("b-checkin").value;
+    const co = document.getElementById("b-checkout").value;
+    const notti = Math.round((new Date(co) - new Date(ci)) / 86400000);
+
+    document.getElementById("riepilogo-content").innerHTML = `
+      <div style="display:grid;gap:10px;margin-bottom:16px;">
+        <div class="price-row"><span>🛏️ Camera</span><span><strong>${cameraSelezionata?.nome}</strong></span></div>
+        <div class="price-row"><span>📅 Check-in</span><span>${formatData(ci)} ore 14:00</span></div>
+        <div class="price-row"><span>📅 Check-out</span><span>${formatData(co)} ore 11:00</span></div>
+        <div class="price-row"><span>🌙 Notti</span><span>${notti}</span></div>
+        <div class="price-row"><span>👤 Ospite</span><span>${nome} ${cognome}</span></div>
+        <div class="price-row"><span>📧 Email</span><span>${email}</span></div>
+        <div class="price-row"><span>📱 Telefono</span><span>${telefono}</span></div>
+        <div class="price-row total"><span>Totale</span><span>€ ${prezzoCalcolato.toFixed(2)}</span></div>
+      </div>
+      <div style="background:#f0fdf4;border-radius:10px;padding:12px;font-size:12px;color:#15803d;">
+        ℹ️ La prenotazione sarà confermata via email. Il pagamento avviene in struttura al check-in.
+      </div>
+    `;
+
+    setStep(4);
+  };
+
+  // ── STEP 4: Conferma ──
+  document.getElementById("btn-conferma").onclick = async () => {
+    const btn = document.getElementById("btn-conferma");
+    btn.disabled = true; btn.textContent = "Invio in corso...";
+    const err = document.getElementById("err-conferma");
+    err.textContent = "";
+
+    const ci = document.getElementById("b-checkin").value;
+    const co = document.getElementById("b-checkout").value;
+    const notti = Math.round((new Date(co) - new Date(ci)) / 86400000);
+
+    const { data: pren, error } = await supabase.from("hotel_prenotazioni").insert({
+      azienda_id:    aziendaId,
+      camera_id:     cameraSelezionata.id,
+      canale:        "diretto",
+      stato:         "confermata",
+      ospite_nome:   document.getElementById("b-nome").value.trim(),
+      ospite_cognome:document.getElementById("b-cognome").value.trim(),
+      ospite_email:  document.getElementById("b-email").value.trim(),
+      ospite_telefono:document.getElementById("b-telefono").value.trim(),
+      ospite_nazione:document.getElementById("b-nazione").value,
+      data_checkin:  ci,
+      data_checkout: co,
+      adulti:        parseInt(document.getElementById("b-adulti").value),
+      bambini:       parseInt(document.getElementById("b-bambini").value),
+      prezzo_notte:  prezzoCalcolato / notti,
+      prezzo_totale: prezzoCalcolato,
+      stato_pagamento: "non_pagato",
+      richieste_speciali: document.getElementById("b-richieste").value.trim() || null,
+    }).select().single();
+
+    if (error) {
+      err.textContent = "Errore: " + error.message;
+      btn.disabled = false; btn.textContent = "Conferma prenotazione 🎉";
+      return;
+    }
+
+    // Mostra successo
+    document.getElementById("box-step-4").style.display = "none";
+    document.getElementById("box-successo").style.display = "";
+    document.getElementById("successo-testo").textContent =
+      `Grazie ${pren.ospite_nome}! Ti invieremo una email di conferma a ${pren.ospite_email}.`;
+    document.getElementById("successo-dettagli").innerHTML = `
+      <strong>${cameraSelezionata.nome}</strong><br>
+      Check-in: ${formatData(ci)} · Check-out: ${formatData(co)}<br>
+      ${notti} notti · Totale: € ${prezzoCalcolato.toFixed(2)}<br><br>
+      <span style="color:var(--muted);">Codice prenotazione: <strong>${pren.id.substring(0,8).toUpperCase()}</strong></span>
+    `;
+
+    // Aggiorna step
+    document.getElementById("step-4").classList.add("done");
+  };
+
+  // ── Back buttons ──
+  document.getElementById("btn-back-1").onclick = () => setStep(1);
+  document.getElementById("btn-back-2").onclick = () => setStep(2);
+  document.getElementById("btn-back-3").onclick = () => setStep(3);
+
+  function setStep(n) {
+    [1,2,3,4].forEach(i => {
+      document.getElementById(`box-step-${i}`).style.display = i === n ? "" : "none";
+      const el = document.getElementById(`step-${i}`);
+      el.classList.toggle("active", i === n);
+      el.classList.toggle("done", i < n);
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function calcolaPrezzoCamera(camera, tariffe, ci, co, adulti, notti) {
+    const prezzoBase = camera.prezzo_base || 0;
+    let totale = 0;
+
+    for (let i = 0; i < notti; i++) {
+      const data = new Date(ci);
+      data.setDate(data.getDate() + i);
+      const dataStr = data.toISOString().split("T")[0];
+      const giorno = data.getDay();
+      const giorno0 = giorno === 0 ? 6 : giorno - 1;
+
+      const applicabili = tariffe.filter(t =>
+        t.attiva && (!t.camera_id || t.camera_id === camera.id) && tarriffaApplicabile(t, dataStr, giorno0)
+      );
+
+      const esclusive  = applicabili.filter(t => t.cumulabile === false);
+      const cumulative = applicabili.filter(t => t.cumulabile !== false);
+
+      let prezzoNotte = prezzoBase;
+      if (esclusive.length > 0) {
+        esclusive.sort((a,b) => (b.priorita||0) - (a.priorita||0));
+        const t = esclusive[0];
+        prezzoNotte = t.prezzo_fisso || prezzoBase * (1 + (t.modifica_perc||0)/100);
+      } else if (cumulative.length > 0) {
+        const percTot = cumulative.reduce((s,t) => s + (t.modifica_perc||0), 0);
+        prezzoNotte = prezzoBase * (1 + percTot/100);
+      }
+
+      // Supplemento persone aggiuntive
+      const supplPerNotte = applicabili.reduce((s,t) => s + (t.supplemento_persona||0), 0);
+      if (supplPerNotte > 0 && adulti > 2) prezzoNotte += supplPerNotte * (adulti - 2);
+
+      totale += prezzoNotte;
+    }
+    return totale;
+  }
+
+  function tarriffaApplicabile(t, dataStr, giornoSettimana) {
+    const tipo = t.tipo_regola || "periodo";
+    if (tipo === "periodo") return t.data_inizio && dataStr >= t.data_inizio && dataStr <= t.data_fine;
+    if (tipo === "weekend") return [4,5,6].includes(giornoSettimana);
+    if (tipo === "giornata") return (t.giorni_settimana||[]).includes(giornoSettimana);
+    return false;
+  }
+
+  function formatData(d) {
+    if (!d) return "—";
+    const [y,m,g] = d.split("-"); return `${g}/${m}/${y}`;
+  }
+</script>
+</body>
+</html>
