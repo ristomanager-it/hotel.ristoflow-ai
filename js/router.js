@@ -14,6 +14,9 @@ const routes = {
   "hotel-pacchetti":      () => import("./views/hotel-pacchetti.js"),
   "hotel-tariffe":        () => import("./views/hotel-tariffe.js"),
   "hotel-report":         () => import("./views/hotel-report.js"),
+  "hotel-ospiti":         () => import("./views/hotel-ospiti.js"),
+  "hotel-marketing":      () => import("./views/hotel-marketing.js"),
+  "hotel-messaggi":       () => import("./views/hotel-messaggi.js"),
 };
 
 /* ============================================================
@@ -45,6 +48,10 @@ const MENU = [
   { hash: "hotel-pacchetti",     icon: "🎁", label: "Pacchetti",     modulo: "hotel_pacchetti" },
   { hash: "hotel-colazione",     icon: "☕", label: "Colazione",     modulo: "hotel_colazione" },
   { hash: "hotel-report",        icon: "📊", label: "Report",        modulo: "hotel_report" },
+  { section: "Ospiti & Marketing" },
+  { hash: "hotel-ospiti",         icon: "👤", label: "Anagrafica ospiti", modulo: null },
+  { hash: "hotel-marketing",      icon: "📣", label: "Marketing",         modulo: null },
+  { hash: "hotel-messaggi",       icon: "💬", label: "Messaggi",          modulo: null },
 ];
 
 function buildMenu(azienda) {
