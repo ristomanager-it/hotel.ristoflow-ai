@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ristoflow Hotel</title>
+  <link rel="icon" href="assets/favicon-192.png">
+  <link rel="apple-touch-icon" href="assets/favicon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <div class="topbar" id="topbar" style="display:none;">
+    <div class="topbar-inner">
+      <div class="topbar-brand">
+        <img src="assets/favicon-192.png" class="topbar-logo">
+        <span class="topbar-title">Hotel</span>
+      </div>
+      <div class="topbar-right">
+        <span id="topbar-azienda" class="topbar-azienda"></span>
+        <button class="topbar-btn" id="btn-logout">Esci</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="app-shell" id="app-shell" style="display:none;">
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-menu" id="sidebar-menu"></div>
+    </nav>
+    <main class="main-content" id="app"></main>
+  </div>
+
+  <!-- LOGIN (no sidebar) -->
+  <div id="app-login"></div>
+
+  <script type="module" src="js/router.js"></script>
+</body>
+</html>
