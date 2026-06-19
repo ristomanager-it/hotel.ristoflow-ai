@@ -1,6 +1,23 @@
 import { supabase } from "./supabaseClient.js";
 
 /* ============================================================
+   SSO — intercetta token da Ristoflow e fa login automatico
+============================================================ */
+(async function ssoInit() {
+  const hash = window.location.hash;
+  if (hash.includes("access_token=") && hash.includes("type=sso")) {
+    const params = new URLSearchParams(hash.substring(1));
+    const access_token  = params.get("access_token");
+    const refresh_token = params.get("refresh_token");
+    if (access_token && refresh_token) {
+      await supabase.auth.setSession({ access_token, refresh_token });
+      // Pulisci l'URL
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }
+})();
+
+/* ============================================================
    ROUTES
 ============================================================ */
 const routes = {
