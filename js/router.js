@@ -14,6 +14,7 @@ const routes = {
   "hotel-pacchetti":      () => import("./views/hotel-pacchetti.js"),
   "hotel-tariffe":        () => import("./views/hotel-tariffe.js"),
   "hotel-report":         () => import("./views/hotel-report.js"),
+  "hotel-configurazione": () => import("./views/hotel-configurazione.js"),
   "hotel-ospiti":         () => import("./views/hotel-ospiti.js"),
   "hotel-marketing":      () => import("./views/hotel-marketing.js"),
   "hotel-messaggi":       () => import("./views/hotel-messaggi.js"),
@@ -49,6 +50,7 @@ const MENU = [
   { hash: "hotel-camere",       icon: "🛏️",  label: "Camere" },
   { hash: "hotel-tariffe",      icon: "💶", label: "Tariffe" },
   { hash: "hotel-pacchetti",    icon: "🎁", label: "Pacchetti" },
+  { hash: "hotel-configurazione", icon: "⚙️", label: "Configurazione" },
 
   { section: "Clienti & Marketing" },
   { hash: "hotel-ospiti",       icon: "👥", label: "Anagrafica ospiti" },
