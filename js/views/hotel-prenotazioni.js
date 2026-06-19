@@ -256,6 +256,7 @@ function renderEditor(prenotazione, aziendaId, container) {
               <option value="">Seleziona camera...</option>
               ${camere.map(c => `<option value="${c.id}" data-prezzo="${c.prezzo_base || 0}" ${p.camera_id === c.id ? "selected" : ""}>${c.nome} ${c.tipologia ? `(${c.tipologia})` : ""} — € ${c.prezzo_base || 0}/notte</option>`).join("")}
             </select>
+            <div id="disponibilita-info" style="font-size:12px;margin-top:4px;"></div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div class="form-group">
@@ -451,20 +452,126 @@ function renderEditor(prenotazione, aziendaId, container) {
     editor.querySelector("#ed-totale").value = totale.toFixed(2);
   }
 
+  // Aggiorna disponibilità camere quando cambiano le date
+  async function aggiornaDisponibilita() {
+    const ci = editor.querySelector("#ed-checkin").value;
+    const co = editor.querySelector("#ed-checkout").value;
+    const info = editor.querySelector("#disponibilita-info");
+    if (!ci || !co || co <= ci) return;
+
+    // Cerca prenotazioni che si sovrappongono nel periodo
+    const { data: sovrapposte } = await supabase
+      .from("hotel_prenotazioni")
+      .select("camera_id")
+      .eq("azienda_id", aziendaId)
+      .not("stato", "in", "(cancellata,noshow)")
+      .lt("data_checkin", co)
+      .gt("data_checkout", ci)
+      .neq("id", prenotazione?.id || "00000000-0000-0000-0000-000000000000");
+
+    const occupate = new Set((sovrapposte || []).map(r => r.camera_id));
+
+    // Aggiorna opzioni select
+    editor.querySelectorAll("#ed-camera option[value]").forEach(opt => {
+      if (!opt.value) return;
+      const occ = occupate.has(opt.value);
+      opt.disabled = occ;
+      opt.style.color = occ ? "#dc2626" : "";
+      // Rimuovi vecchio marker e aggiungi nuovo
+      const baseText = opt.dataset.baseText || opt.textContent.replace(" 🔴 Occupata", "").replace(" ✅", "");
+      opt.dataset.baseText = baseText;
+      opt.textContent = occ ? baseText + " 🔴 Occupata" : baseText + " ✅";
+    });
+
+    // Deseleziona se camera ora occupata
+    const sel = editor.querySelector("#ed-camera");
+    if (sel.value && occupate.has(sel.value)) {
+      sel.value = "";
+      if (info) info.innerHTML = `<span style="color:var(--danger);">⚠️ La camera selezionata è occupata in questo periodo — scegline un'altra</span>`;
+    } else if (info) {
+      const nOcc = occupate.size;
+      const nTot = editor.querySelectorAll("#ed-camera option[value]:not([value=''])").length;
+      info.innerHTML = nOcc > 0
+        ? `<span style="color:var(--muted);">${nTot - nOcc} camere disponibili su ${nTot}</span>`
+        : `<span style="color:var(--success);">✅ Tutte le ${nTot} camere disponibili</span>`;
+    }
+
+    // Ricalcola prezzo con tariffe cumulabili
+    await ricalcolaConTariffe(ci, co);
+  }
+
+  // Calcolo prezzo con tariffe cumulabili
+  async function ricalcolaConTariffe(ci, co) {
+    if (!ci || !co || co <= ci) { ricalcola(); return; }
+    const camOpt = editor.querySelector("#ed-camera").selectedOptions[0];
+    const prezzoBase = parseFloat(camOpt?.dataset.prezzo || 0);
+    if (!prezzoBase) { ricalcola(); return; }
+
+    // Carica tariffe applicabili
+    const { data: tariffe } = await supabase
+      .from("hotel_tariffe")
+      .select("*")
+      .eq("azienda_id", aziendaId)
+      .eq("attiva", true)
+      .or(\`camera_id.eq.\${camOpt?.value || "null"},camera_id.is.null\`);
+
+    const notti = Math.round((new Date(co) - new Date(ci)) / 86400000);
+    let totalePrezzoNotti = 0;
+
+    for (let i = 0; i < notti; i++) {
+      const data = new Date(ci);
+      data.setDate(data.getDate() + i);
+      const dataStr = data.toISOString().split("T")[0];
+      const giorno  = data.getDay();
+      const giorno0 = giorno === 0 ? 6 : giorno - 1;
+
+      const applicabili = (tariffe || []).filter(t => tarriffaApplicabile(t, dataStr, giorno0));
+
+      // Tariffe esclusive (cumulabile=false) — prendi la più prioritaria
+      const esclusive = applicabili.filter(t => t.cumulabile === false);
+      // Tariffe cumulabili (cumulabile=true o null) — sommale tutte
+      const cumul = applicabili.filter(t => t.cumulabile !== false);
+
+      let prezzoNotte = prezzoBase;
+      if (esclusive.length > 0) {
+        // Vince la esclusiva con priorità più alta
+        esclusive.sort((a,b) => (b.priorita||0) - (a.priorita||0));
+        const t = esclusive[0];
+        prezzoNotte = t.prezzo_fisso || prezzoBase * (1 + (t.modifica_perc||0)/100);
+      } else if (cumul.length > 0) {
+        // Somma tutte le % cumulabili
+        const percTot = cumul.reduce((s,t) => s + (t.modifica_perc||0), 0);
+        prezzoNotte = prezzoBase * (1 + percTot/100);
+      }
+
+      totalePrezzoNotti += prezzoNotte;
+    }
+
+    const prezzoMedioNotte = notti > 0 ? totalePrezzoNotti / notti : prezzoBase;
+    editor.querySelector("#ed-prezzo-notte").value = prezzoMedioNotte.toFixed(2);
+    ricalcola();
+  }
+
   // Auto-fill prezzo notte dalla camera selezionata
   editor.querySelector("#ed-camera").onchange = () => {
     const opt = editor.querySelector("#ed-camera").selectedOptions[0];
     const prezzo = opt?.dataset.prezzo;
-    if (prezzo && !editor.querySelector("#ed-prezzo-notte").value) {
-      editor.querySelector("#ed-prezzo-notte").value = prezzo;
-    }
-    ricalcola();
+    if (prezzo) editor.querySelector("#ed-prezzo-notte").value = prezzo;
+    aggiornaDisponibilita();
   };
 
-  ["#ed-checkin","#ed-checkout","#ed-adulti","#ed-prezzo-notte","#ed-sconto","#ed-pacchetto","#ed-prezzo-col"].forEach(sel => {
+  ["#ed-checkin","#ed-checkout"].forEach(sel => {
+    const el = editor.querySelector(sel);
+    if (el) { el.onchange = () => aggiornaDisponibilita(); }
+  });
+
+  ["#ed-adulti","#ed-prezzo-notte","#ed-sconto","#ed-pacchetto","#ed-prezzo-col"].forEach(sel => {
     const el = editor.querySelector(sel);
     if (el) { el.oninput = ricalcola; el.onchange = ricalcola; }
   });
+
+  // Trigger iniziale se stiamo modificando
+  if (p.data_checkin && p.data_checkout) aggiornaDisponibilita();
 
   // Toggle colazione
   editor.querySelector("#ed-colazione").onchange = () => {
@@ -576,4 +683,14 @@ function primoMese() {
 function ultimoMese() {
   const d = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0);
   return d.toISOString().split("T")[0];
+}
+
+// ── Helper tariffe ──
+function tarriffaApplicabile(t, dataStr, giornoSettimana) {
+  if (!t.attiva) return false;
+  const tipo = t.tipo_regola || "periodo";
+  if (tipo === "periodo") return t.data_inizio && dataStr >= t.data_inizio && dataStr <= t.data_fine;
+  if (tipo === "weekend") return [4,5,6].includes(giornoSettimana); // ven=4,sab=5,dom=6
+  if (tipo === "giornata") return (t.giorni_settimana || []).includes(giornoSettimana);
+  return false;
 }
