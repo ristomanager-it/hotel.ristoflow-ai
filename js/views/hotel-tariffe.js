@@ -171,6 +171,8 @@ async function caricaTariffe(aziendaId, container) {
             <span style="font-weight:700;color:${colore};font-size:14px;">${modifica}</span>
             <span>🛏️ ${t.hotel_camere?.nome || "Tutte le camere"}</span>
             <span style="color:var(--muted);">Priorità ${t.priorita || 0}</span>
+            ${t.cumulabile !== false ? '<span class="badge badge-blue">Cumulabile</span>' : '<span class="badge badge-yellow">Esclusiva</span>'}
+            ${t.supplemento_persona ? `<span class="badge badge-gray">+€${t.supplemento_persona}/pers. agg.</span>` : ""}
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
@@ -310,10 +312,32 @@ function renderEditor(tariffa, aziendaId, container) {
         </div>
       </div>
 
+      <!-- Cumulabile + Supplemento persona -->
+      <div style="background:#f8fafc;border-radius:12px;padding:14px;margin-bottom:14px;">
+        <div style="font-weight:700;margin-bottom:10px;">⚙️ Opzioni avanzate</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px;border:1.5px solid var(--border);border-radius:10px;">
+              <input type="checkbox" id="ed-cumulabile" ${t.cumulabile !== false ? "checked" : ""} style="margin-top:2px;">
+              <div>
+                <div style="font-weight:700;font-size:13px;">Cumulabile</div>
+                <div style="font-size:11px;color:var(--muted);">Si somma ad altre tariffe attive lo stesso giorno. Es. Alta stagione +30% + Weekend +20% = +50%</div>
+              </div>
+            </label>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);">Supplemento per persona aggiuntiva (€/notte)</label>
+            <input id="ed-suppl-persona" class="input" type="number" step="0.01" min="0"
+              value="${t.supplemento_persona || ""}" placeholder="Es. 20 — da 3ª persona in su" style="margin-top:4px;">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Si applica oltre gli adulti base della camera</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Priorità e attiva -->
       <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
         <div class="form-group" style="margin:0;">
-          <label>Priorità (vince la più alta in caso di sovrapposizione)</label>
+          <label>Priorità (vince la più alta se non cumulabile)</label>
           <input id="ed-priorita" class="input" type="number" value="${t.priorita || 0}" style="max-width:100px;">
         </div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:20px;">
@@ -393,8 +417,10 @@ async function salvaTariffa(tariffaId, aziendaId, editor, container) {
     giorni_anticipo:   ["lastminute","anticipo"].includes(tipo) ? parseInt(editor.querySelector("#ed-giorni-anticipo").value) || 7 : null,
     modifica_perc:     isPerc ? (parseFloat(editor.querySelector("#ed-perc").value) || null) : null,
     prezzo_fisso:      !isPerc ? (parseFloat(editor.querySelector("#ed-fisso").value) || null) : null,
-    priorita:          parseInt(editor.querySelector("#ed-priorita").value) || 0,
-    attiva:            editor.querySelector("#ed-attiva").checked,
+    priorita:           parseInt(editor.querySelector("#ed-priorita").value) || 0,
+    attiva:             editor.querySelector("#ed-attiva").checked,
+    cumulabile:         editor.querySelector("#ed-cumulabile").checked,
+    supplemento_persona: parseFloat(editor.querySelector("#ed-suppl-persona").value) || null,
   };
 
   const btn = editor.querySelector("#btn-salva");
@@ -446,26 +472,43 @@ async function simulaPrezzo(aziendaId, container) {
 
     // Trova tariffa applicabile (priorità più alta)
     const applicabili = (tariffe || []).filter(t => tarriffaApplicabile(t, dataStr, giorno0));
-    applicabili.sort((a,b) => (b.priorita||0) - (a.priorita||0));
-    const tariffa = applicabili[0];
+
+    // Separa esclusive (cumulabile=false) e cumulabili
+    const esclusive = applicabili.filter(t => t.cumulabile === false);
+    const cumulative = applicabili.filter(t => t.cumulabile !== false);
 
     let prezzo = prezzoBase;
     let nota = "";
-    if (tariffa) {
-      if (tariffa.prezzo_fisso) {
-        prezzo = tariffa.prezzo_fisso;
-        nota = `${tariffa.nome} (fisso)`;
-      } else {
-        prezzo = prezzoBase * (1 + (tariffa.modifica_perc || 0) / 100);
-        nota = `${tariffa.nome} (${tariffa.modifica_perc > 0 ? "+" : ""}${tariffa.modifica_perc}%)`;
-      }
+
+    if (esclusive.length > 0) {
+      // Vince l'esclusiva con priorità più alta
+      esclusive.sort((a,b) => (b.priorita||0) - (a.priorita||0));
+      const t = esclusive[0];
+      prezzo = t.prezzo_fisso ? t.prezzo_fisso : prezzoBase * (1 + (t.modifica_perc||0)/100);
+      nota = `${t.nome} ${t.prezzo_fisso ? "(fisso)" : `(${t.modifica_perc > 0 ? "+" : ""}${t.modifica_perc}%)`} — ESCLUSIVA`;
+    } else if (cumulative.length > 0) {
+      // Somma tutte le % cumulabili
+      const percTot = cumulative.reduce((s,t) => s + (t.modifica_perc||0), 0);
+      prezzo = prezzoBase * (1 + percTot/100);
+      nota = cumulative.map(t => `${t.nome} (${t.modifica_perc > 0 ? "+" : ""}${t.modifica_perc}%)`).join(" + ");
+      if (cumulative.length > 1) nota += ` = ${percTot > 0 ? "+" : ""}${percTot}% tot.`;
     }
+
+    // Supplemento persona aggiuntiva
+    const adultiSim = parseInt(container.querySelector("#sim-notti")?.closest(".card")?.querySelector("#sim-adulti")?.value) || 2;
+    const supplPerNotte = applicabili.reduce((s,t) => s + (t.supplemento_persona || 0), 0);
+    if (supplPerNotte > 0 && adultiSim > 2) {
+      const extraPersone = adultiSim - 2;
+      prezzo += supplPerNotte * extraPersone;
+      nota += nota ? ` + suppl. ${extraPersone} pers.` : `suppl. ${extraPersone} pers.`;
+    }
+
     totale += prezzo;
 
     righe.push(`
       <tr>
         <td>${data.toLocaleDateString("it-IT",{weekday:"short",day:"numeric",month:"short"})}</td>
-        <td>${nota || "Prezzo base"}</td>
+        <td style="font-size:12px;">${nota || "Prezzo base"}</td>
         <td style="text-align:right;font-weight:700;">€ ${prezzo.toFixed(2)}</td>
       </tr>
     `);
