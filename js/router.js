@@ -99,18 +99,23 @@ async function resolveAzienda(user) {
 
   if (!rels || rels.length === 0) return null;
 
-  // Prendi tutte le aziende disponibili — nessun filtro moduli
-  const pool = rels.filter(r => r.aziende);
+  // Filtra solo aziende con tipo_app contenente 'hotel'
+  const pool = rels.filter(r =>
+    r.aziende && (r.aziende.tipo_app || []).includes("hotel")
+  );
+
+  // Se nessuna azienda hotel, prendi tutte (fallback)
+  const lista = pool.length > 0 ? pool : rels.filter(r => r.aziende);
 
   if (storedId) {
-    const match = pool.find(r => r.aziende?.id === storedId);
+    const match = lista.find(r => r.aziende?.id === storedId);
     if (match?.aziende) return match.aziende;
   }
 
-  // Se più aziende, mostra selezione
-  if (pool.length > 1) return null; // il resolve gestirà la scelta
+  // Se più aziende hotel, mostra selezione
+  if (lista.length > 1) return null;
 
-  return pool[0]?.aziende || null;
+  return lista[0]?.aziende || null;
 }
 
 /* ============================================================
