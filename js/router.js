@@ -38,20 +38,25 @@ window.stateActions = {
    MENU — basato su azienda.moduli
 ============================================================ */
 const MENU = [
-  { section: "Hotel" },
-  { hash: "home",                icon: "🏠", label: "Dashboard",     modulo: null },
-  { hash: "hotel-calendario",    icon: "📅", label: "Calendario",    modulo: "hotel_prenotazioni" },
-  { hash: "hotel-prenotazioni",  icon: "📋", label: "Prenotazioni",  modulo: "hotel_prenotazioni" },
-  { hash: "hotel-checkin",       icon: "🛎️", label: "Check-in / out", modulo: "hotel_checkin" },
-  { hash: "hotel-camere",        icon: "🛏️", label: "Camere",        modulo: "hotel_camere" },
-  { hash: "hotel-tariffe",       icon: "💶", label: "Tariffe",       modulo: "hotel_camere" },
-  { hash: "hotel-pacchetti",     icon: "🎁", label: "Pacchetti",     modulo: "hotel_pacchetti" },
-  { hash: "hotel-colazione",     icon: "☕", label: "Colazione",     modulo: "hotel_colazione" },
-  { hash: "hotel-report",        icon: "📊", label: "Report",        modulo: "hotel_report" },
-  { section: "Ospiti & Marketing" },
-  { hash: "hotel-ospiti",         icon: "👤", label: "Anagrafica ospiti", modulo: null },
-  { hash: "hotel-marketing",      icon: "📣", label: "Marketing",         modulo: null },
-  { hash: "hotel-messaggi",       icon: "💬", label: "Messaggi",          modulo: null },
+  { section: "Operativo" },
+  { hash: "home",               icon: "🏠", label: "Dashboard" },
+  { hash: "hotel-calendario",   icon: "📅", label: "Planning" },
+  { hash: "hotel-checkin",      icon: "🛎️",  label: "Check-in / out" },
+  { hash: "hotel-prenotazioni", icon: "📋", label: "Prenotazioni" },
+  { hash: "hotel-colazione",    icon: "☕", label: "Colazione" },
+
+  { section: "Struttura" },
+  { hash: "hotel-camere",       icon: "🛏️",  label: "Camere" },
+  { hash: "hotel-tariffe",      icon: "💶", label: "Tariffe" },
+  { hash: "hotel-pacchetti",    icon: "🎁", label: "Pacchetti" },
+
+  { section: "Clienti & Marketing" },
+  { hash: "hotel-ospiti",       icon: "👥", label: "Anagrafica ospiti" },
+  { hash: "hotel-marketing",    icon: "📣", label: "Marketing" },
+  { hash: "hotel-messaggi",     icon: "💬", label: "Messaggistica" },
+
+  { section: "Analytics" },
+  { hash: "hotel-report",       icon: "📊", label: "Report & KPI" },
 ];
 
 function buildMenu(azienda) {
@@ -65,8 +70,6 @@ function buildMenu(azienda) {
     if (item.section) {
       return `<div class="menu-section">${item.section}</div>`;
     }
-    // Mostra voce se modulo null (sempre visibile) o se modulo attivo
-    if (item.modulo && !moduli.includes(item.modulo)) return "";
     const active = currentHash === item.hash ? "active" : "";
     return `<div class="menu-item ${active}" data-hash="${item.hash}">
       <span class="icon">${item.icon}</span>
@@ -94,17 +97,16 @@ async function resolveAzienda(user) {
 
   if (!rels || rels.length === 0) return null;
 
-  // Filtra solo aziende con modulo hotel
-  const hotelRels = rels.filter(r =>
-    r.aziende && (r.aziende.moduli || []).some(m => m.startsWith("hotel"))
-  );
-
-  const pool = hotelRels.length > 0 ? hotelRels : rels;
+  // Prendi tutte le aziende disponibili — nessun filtro moduli
+  const pool = rels.filter(r => r.aziende);
 
   if (storedId) {
     const match = pool.find(r => r.aziende?.id === storedId);
     if (match?.aziende) return match.aziende;
   }
+
+  // Se più aziende, mostra selezione
+  if (pool.length > 1) return null; // il resolve gestirà la scelta
 
   return pool[0]?.aziende || null;
 }
@@ -139,7 +141,59 @@ async function resolve() {
   // Risolvi azienda
   if (!window.state.azienda) {
     const azienda = await resolveAzienda(user);
-    if (!azienda) { window.location.hash = "#/login"; return; }
+
+    if (!azienda) {
+      // Più aziende disponibili — mostra selezione
+      const { data: rels } = await supabase
+        .from("utenti_aziende")
+        .select("azienda_id, ruolo, aziende(id, nome, logo_url)")
+        .eq("user_id", user.id)
+        .eq("attivo", true)
+        .neq("aziende.stato", "piattaforma");
+
+      const pool = (rels || []).filter(r => r.aziende);
+      if (pool.length === 0) { window.location.hash = "#/login"; return; }
+
+      // Mostra schermata selezione azienda
+      showLoginLayout();
+      const sel = document.getElementById("app-login");
+      sel.innerHTML = `
+        <div style="min-height:100vh;background:linear-gradient(135deg,#1B4F72,#2471A3);display:flex;align-items:center;justify-content:center;padding:20px;">
+          <div style="background:white;border-radius:20px;padding:32px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+            <div style="text-align:center;margin-bottom:24px;">
+              <img src="assets/favicon-192.png" style="width:48px;height:48px;border-radius:12px;margin-bottom:12px;">
+              <div style="font-size:18px;font-weight:800;">Seleziona struttura</div>
+              <div style="font-size:13px;color:#64748b;margin-top:4px;">Hai accesso a più strutture</div>
+            </div>
+            ${pool.map(r => `
+              <div class="sel-az" data-id="${r.aziende.id}" style="
+                display:flex;align-items:center;gap:12px;padding:14px;
+                border:1.5px solid #e2e8f0;border-radius:12px;margin-bottom:10px;
+                cursor:pointer;transition:all .15s;
+              " onmouseenter="this.style.borderColor='#1B4F72';this.style.background='#EBF5FB'"
+                onmouseleave="this.style.borderColor='#e2e8f0';this.style.background=''">
+                <div style="width:40px;height:40px;border-radius:10px;background:#1B4F72;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <span style="color:white;font-size:18px;">🏨</span>
+                </div>
+                <div style="font-weight:700;">${r.aziende.nome}</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+
+      sel.querySelectorAll(".sel-az").forEach(el => {
+        el.onclick = () => {
+          const az = pool.find(r => r.aziende.id === el.dataset.id)?.aziende;
+          if (az) {
+            window.stateActions.setAzienda(az);
+            resolve();
+          }
+        };
+      });
+      return;
+    }
+
     window.stateActions.setAzienda(azienda);
   }
 
