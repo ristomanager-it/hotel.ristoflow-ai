@@ -648,7 +648,7 @@ async function renderTabMinibar(box) {
 
   const [{ data: prodotti }, { data: camere }] = await Promise.all([
     supabase.from('hotel_minibar_prodotti').select('*').eq('azienda_id', aziendaId).order('categoria').order('ordine'),
-    supabase.from('hotel_camere').select('id,numero,nome').eq('azienda_id', aziendaId).order('numero'),
+    supabase.from('hotel_camere').select('id,nome').eq('azienda_id', aziendaId).order('nome'),
   ]);
 
   let subTab = 'prodotti';
@@ -805,7 +805,7 @@ async function renderTabMinibar(box) {
     const oggi = new Date().toISOString().split('T')[0];
     const { data: consumi } = await supabase
       .from('hotel_minibar_consumi')
-      .select(`*, hotel_minibar_prodotti(nome,prezzo), hotel_camere(numero)`)
+      .select(`*, hotel_minibar_prodotti(nome,prezzo), hotel_camere(nome)`)
       .eq('azienda_id', aziendaId)
       .gte('data_consumo', oggi)
       .order('created_at', { ascending: false });
@@ -813,7 +813,7 @@ async function renderTabMinibar(box) {
     // Raggruppa per camera
     const perCamera = {};
     (consumi||[]).forEach(c => {
-      const cam = c.hotel_camere?.numero || '?';
+      const cam = c.hotel_camere?.nome || '?';
       if (!perCamera[cam]) perCamera[cam] = { totale:0, items:[] };
       perCamera[cam].items.push(c);
       perCamera[cam].totale += c.importo || 0;
@@ -850,7 +850,7 @@ async function renderTabMinibar(box) {
             <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Camera</label>
             <select id="cons-camera" class="input">
               <option value="">-- Seleziona --</option>
-              ${(camere||[]).map(c=>`<option value="${c.id}">${esc(c.numero||c.nome)}</option>`).join('')}
+              ${(camere||[]).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('')}
             </select>
           </div>
           <div>
