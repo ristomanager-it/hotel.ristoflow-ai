@@ -23,7 +23,16 @@ const PRIORITA = [
   { id:'media', label:'Media', color:'#d97706' },
   { id:'bassa', label:'Bassa', color:'#64748b' },
 ];
-const RUOLI = ['cameriera','manutentore','receptionist','qualsiasi'];
+const RUOLI = ['cameriera_piani','manutentore','receptionist','addetto_colazione','portiere','operatore','qualsiasi'];
+const RUOLI_LABEL = {
+  cameriera_piani:   'Cameriera ai piani',
+  manutentore:       'Manutentore',
+  receptionist:      'Receptionist',
+  addetto_colazione: 'Addetto colazione',
+  portiere:          'Portiere',
+  operatore:         'Operatore generico',
+  qualsiasi:         'Qualsiasi',
+};
 const GIORNI_SETT = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 
 export async function render(container) {
@@ -721,7 +730,7 @@ function formRegolaHTML() {
       <div>
         <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Ruolo assegnazione</label>
         <select id="rg-ruolo" class="input">
-          ${RUOLI.map(r=>`<option value="${r}">${r}</option>`).join('')}
+          ${RUOLI.map(r=>`<option value="${r}">${RUOLI_LABEL[r]||r}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -852,7 +861,7 @@ async function renderTabTurni(box) {
           <div>
             <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Ruolo turno</label>
             <select id="turno-ruolo" class="input">
-              ${RUOLI.filter(r=>r!=='qualsiasi').map(r=>`<option value="${r}" ${turnoEsistente?.ruolo_turno===r?'selected':''}>${r}</option>`).join('')}
+              ${RUOLI.filter(r=>r!=='qualsiasi').map(r=>`<option value="${r}" ${turnoEsistente?.ruolo_turno===r?'selected':''}>${RUOLI_LABEL[r]||r}</option>`).join('')}
             </select>
           </div>
           <div>
