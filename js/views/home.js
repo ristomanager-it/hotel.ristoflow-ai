@@ -62,57 +62,6 @@ export async function render(container) {
       </div>
     </div>
 
-    <!-- TONY AI -->
-    <div class="tony-wrap">
-      <div class="tony-header">
-        <div class="tony-avatar">🤖</div>
-        <div>
-          <div style="font-weight:700;font-size:14px;">Tony — Assistente Hotel</div>
-          <div style="font-size:11px;color:#64748b;">AI operativa · conosce la tua struttura</div>
-        </div>
-        <button id="tony-memoria-btn" style="margin-left:auto;background:#f1f5f9;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">🧠 Memoria</button>
-      </div>
-      <div class="tony-msgs" id="tony-msgs">
-        <div class="tony-msg tony" id="tony-benvenuto">⏳ Caricamento contesto...</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;" id="tony-suggerimenti"></div>
-      <div class="tony-input-wrap">
-        <input class="tony-input" id="tony-input" placeholder="Chiedi qualcosa..." />
-        <button class="tony-send" id="tony-send">➤</button>
-      </div>
-    </div>
-
-    <!-- BACHECA STAFF -->
-    <div class="bacheca-wrap">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-        <div>
-          <div style="font-size:15px;font-weight:700;">📌 Bacheca staff</div>
-          <div style="font-size:12px;color:#64748b;">Comunicazioni operative del team</div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <a href="https://social.ristoflow-ai.com?a=${aziendaId}" target="_blank"
-            style="background:#f0f9ff;color:#0E5A7A;border:1px solid #bae6fd;padding:7px 14px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:600;">
-            🌐 Bacheca pubblica
-          </a>
-          <button id="btn-nuovo-post" style="background:#0E5A7A;color:white;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">+ Post</button>
-        </div>
-      </div>
-      <div id="bacheca-posts"><div style="color:#94a3b8;font-size:13px;">Caricamento...</div></div>
-      <!-- FORM NUOVO POST -->
-      <div id="form-post-wrap" style="display:none;background:#f8fafc;border-radius:12px;padding:14px;margin-top:12px;">
-        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-          ${['📋 Operativo','🔧 Manutenzione','☕ Colazione','🛏️ Camere','⚠️ Urgente'].map(t=>`
-            <button class="tag-btn" data-tag="${t}" style="background:white;border:1px solid #e5e7eb;padding:5px 12px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;">${t}</button>
-          `).join('')}
-        </div>
-        <textarea id="post-testo" placeholder="Scrivi un messaggio per il team..." style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:10px;font-size:13px;resize:none;box-sizing:border-box;" rows="3"></textarea>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button id="btn-invia-post" style="background:#0E5A7A;color:white;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">Invia</button>
-          <button id="btn-annulla-post" style="background:#f1f5f9;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;">Annulla</button>
-        </div>
-      </div>
-    </div>
-
     <!-- ARRIVI E PARTENZE -->
     <div class="home-grid">
       <div class="card">
@@ -145,13 +94,7 @@ export async function render(container) {
   await Promise.all([
     caricaMeteo(az),
     caricaDashboard(aziendaId),
-    caricaTony(aziendaId),
-    caricaBacheca(aziendaId),
   ]);
-
-  // Tony bindings
-  initTony(aziendaId);
-  initBacheca(aziendaId);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -159,31 +102,21 @@ export async function render(container) {
 // ════════════════════════════════════════════════════════════════
 async function caricaMeteo(az) {
   try {
-    let lat, lon, luogo;
-
-    // Geocoding dall'indirizzo azienda via Nominatim (OpenStreetMap, gratuito)
-    const indirizzo = [az?.indirizzo, az?.citta].filter(Boolean).join(', ');
+    let lat, lon;
+    const indirizzo = [az?.indirizzo, az?.citta].filter(Boolean).join(", ");
     if (indirizzo) {
       try {
         const geo = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(indirizzo)}&format=json&limit=1`,
-          { headers: { 'Accept-Language': 'it', 'User-Agent': 'Ristoflow/1.0' } }
+          { headers: { "Accept-Language": "it", "User-Agent": "Ristoflow/1.0" } }
         );
-        const geoData = await geo.json();
-        if (geoData?.[0]) {
-          lat   = parseFloat(geoData[0].lat);
-          lon   = parseFloat(geoData[0].lon);
-          luogo = geoData[0].display_name?.split(',').slice(0,2).join(',').trim();
-        }
+        const gd = await geo.json();
+        if (gd?.[0]) { lat = parseFloat(gd[0].lat); lon = parseFloat(gd[0].lon); }
       } catch {}
     }
+    if (!lat) { lat = 41.9; lon = 12.5; }
 
-    // Fallback: coordinate centro Italia
-    if (!lat) { lat = 41.9; lon = 12.5; luogo = 'Italia'; }
-
-    const res = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&timezone=Europe/Rome`
-    );
+    const res  = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&timezone=Europe/Rome`);
     const data = await res.json();
     const temp  = Math.round(data.current?.temperature_2m);
     const code  = data.current?.weathercode;
@@ -191,9 +124,8 @@ async function caricaMeteo(az) {
     const hum   = data.current?.relative_humidity_2m;
     const icona = meteoIcona(code);
     const desc  = meteoDescrizione(code);
-
     document.getElementById('meteo-testo').innerHTML =
-      `<strong>${temp}°C</strong> · ${desc} · 💨 ${wind} km/h · 💧 ${hum}%${luogo ? `<br><span style="font-size:11px;opacity:.75;">📍 ${luogo}</span>` : ''}`;
+      `<strong>${temp}°C</strong> · ${desc} · 💨 ${wind} km/h · 💧 ${hum}%`;
     document.querySelector('.hero-meteo span').textContent = icona;
   } catch {
     document.getElementById('meteo-testo').textContent = 'Meteo non disponibile';
@@ -411,22 +343,18 @@ function initTony(aziendaId) {
     msgs.scrollTop = msgs.scrollHeight;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('https://cuhcscpvhypoaplcmtjk.supabase.co/functions/v1/assistente-ai', {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          azienda_id: aziendaId,
-          messaggio:  testo,
-          history:    tonyHistory.slice(-8),
-          system:     tonyContesto,
+          model: 'claude-sonnet-4-6',
+          max_tokens: 600,
+          system: tonyContesto,
+          messages: tonyHistory,
         })
       });
       const data = await res.json();
-      const risposta = data.risposta || data.content?.[0]?.text || data.error || 'Scusa, non ho capito.';
+      const risposta = data.content?.[0]?.text || 'Scusa, non ho capito.';
       tonyHistory.push({ role:'assistant', content: risposta });
 
       document.getElementById(loadId)?.remove();
