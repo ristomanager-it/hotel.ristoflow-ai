@@ -191,10 +191,12 @@ async function renderTabTask(box) {
       box.querySelector('#form-task-wrap').style.display = '';
       box.querySelector('#form-task-wrap').scrollIntoView({ behavior:'smooth' });
     };
-    box.querySelector('#btn-annulla-task')?.onclick = () => {
+    const btnAnnullaTask = box.querySelector('#btn-annulla-task');
+    if (btnAnnullaTask) btnAnnullaTask.onclick = () => {
       box.querySelector('#form-task-wrap').style.display = 'none';
     };
-    box.querySelector('#btn-salva-task')?.onclick = () => salvaTask(box, dataSelezionata, dipendenti, camere, async () => {
+    const btnSalvaTask = box.querySelector('#btn-salva-task');
+    if (btnSalvaTask) btnSalvaTask.onclick = () => salvaTask(box, dataSelezionata, dipendenti, camere, async () => {
       dati = await caricaTask(dataSelezionata);
       render(dati);
     });
@@ -600,7 +602,7 @@ async function renderTabRegole(box) {
     box.querySelector('#form-regola-wrap').style.display = '';
     box.querySelector('#form-regola-wrap').scrollIntoView({ behavior:'smooth' });
   };
-  box.querySelector('#btn-annulla-regola')?.onclick = () => { box.querySelector('#form-regola-wrap').style.display='none'; };
+  const _bar = box.querySelector('#btn-annulla-regola'); if (_bar) _bar.onclick = () => { box.querySelector('#form-regola-wrap').style.display='none'; };
 
   box.querySelectorAll('[data-toggle-regola]').forEach(chk => {
     chk.onchange = async () => {
@@ -642,7 +644,8 @@ async function renderTabRegole(box) {
     aggiornaVisibilitaFreq(box.querySelector('#form-regola-wrap'), this.value);
   });
 
-  box.querySelector('#btn-salva-regola')?.onclick = async () => {
+  const _bsr = box.querySelector('#btn-salva-regola');
+  if (_bsr) _bsr.onclick = async () => {
     const f = box.querySelector('#form-regola-wrap');
     const esito = f.querySelector('#rg-esito');
     const payload = {
@@ -890,7 +893,8 @@ async function renderTabTurni(box) {
       renderTabTurni(box);
     };
 
-    modal.querySelector('#btn-del-turno')?.onclick = async () => {
+    const _bdt = modal.querySelector('#btn-del-turno');
+    if (_bdt) _bdt.onclick = async () => {
       await supabase.from('hotel_turni').delete().eq('id', turnoEsistente.id);
       modal.remove();
       renderTabTurni(box);
@@ -1059,7 +1063,8 @@ async function renderTabProduttivita(box) {
     ` : ''}
   `;
 
-  box.querySelector('#btn-esporta-log')?.onclick = () => {
+  const _bel = box.querySelector('#btn-esporta-log');
+  if (_bel) _bel.onclick = () => {
     const header = ['Data','Operatore','Camera','Tipo','Task','Stim.(min)','Effettivo(min)','Scostamento','Costo €'];
     const rows = entries.map(e=>[e.data, e.dipendente_nome||'', e.camera_numero||'', e.tipo||'', e.nome_task||'', e.durata_stimata_min||0, e.durata_effettiva_min||0, e.scostamento_min||0, Number(e.costo_effettivo||0).toFixed(2)]);
     const csv = [header,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
