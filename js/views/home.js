@@ -159,20 +159,41 @@ export async function render(container) {
 // ════════════════════════════════════════════════════════════════
 async function caricaMeteo(az) {
   try {
-    // Usa coordinate dell'azienda o default Italia
-    const lat = az?.lat || 39.3;
-    const lon = az?.lon || 16.2;
+    let lat, lon, luogo;
+
+    // Geocoding dall'indirizzo azienda via Nominatim (OpenStreetMap, gratuito)
+    const indirizzo = [az?.indirizzo, az?.citta].filter(Boolean).join(', ');
+    if (indirizzo) {
+      try {
+        const geo = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(indirizzo)}&format=json&limit=1`,
+          { headers: { 'Accept-Language': 'it', 'User-Agent': 'Ristoflow/1.0' } }
+        );
+        const geoData = await geo.json();
+        if (geoData?.[0]) {
+          lat   = parseFloat(geoData[0].lat);
+          lon   = parseFloat(geoData[0].lon);
+          luogo = geoData[0].display_name?.split(',').slice(0,2).join(',').trim();
+        }
+      } catch {}
+    }
+
+    // Fallback: coordinate centro Italia
+    if (!lat) { lat = 41.9; lon = 12.5; luogo = 'Italia'; }
+
     const res = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m&timezone=Europe/Rome`
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&timezone=Europe/Rome`
     );
     const data = await res.json();
-    const temp = Math.round(data.current?.temperature_2m);
-    const code = data.current?.weathercode;
-    const wind = Math.round(data.current?.windspeed_10m);
+    const temp  = Math.round(data.current?.temperature_2m);
+    const code  = data.current?.weathercode;
+    const wind  = Math.round(data.current?.windspeed_10m);
+    const hum   = data.current?.relative_humidity_2m;
     const icona = meteoIcona(code);
     const desc  = meteoDescrizione(code);
+
     document.getElementById('meteo-testo').innerHTML =
-      `<strong>${temp}°C</strong> · ${desc} · 💨 ${wind} km/h`;
+      `<strong>${temp}°C</strong> · ${desc} · 💨 ${wind} km/h · 💧 ${hum}%${luogo ? `<br><span style="font-size:11px;opacity:.75;">📍 ${luogo}</span>` : ''}`;
     document.querySelector('.hero-meteo span').textContent = icona;
   } catch {
     document.getElementById('meteo-testo').textContent = 'Meteo non disponibile';
@@ -390,18 +411,22 @@ function initTony(aziendaId) {
     msgs.scrollTop = msgs.scrollHeight;
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://cuhcscpvhypoaplcmtjk.supabase.co/functions/v1/assistente-ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 600,
-          system: tonyContesto,
-          messages: tonyHistory,
+          azienda_id: aziendaId,
+          messaggio:  testo,
+          history:    tonyHistory.slice(-8),
+          system:     tonyContesto,
         })
       });
       const data = await res.json();
-      const risposta = data.content?.[0]?.text || 'Scusa, non ho capito.';
+      const risposta = data.risposta || data.content?.[0]?.text || data.error || 'Scusa, non ho capito.';
       tonyHistory.push({ role:'assistant', content: risposta });
 
       document.getElementById(loadId)?.remove();
