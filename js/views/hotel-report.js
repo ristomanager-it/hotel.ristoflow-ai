@@ -143,10 +143,10 @@ export async function render(container) {
         .lte('data_checkin', al)
         .order('data_checkin'),
       supabase.from('hotel_camere')
-        .select('id, numero, nome, tipo, capacita, prezzo_base')
+        .select('id, nome, tipologia, ospiti_max, prezzo_base')
         .eq('azienda_id', aziendaId),
       supabase.from('hotel_minibar_consumi')
-        .select('*, hotel_minibar_prodotti(nome,categoria), hotel_camere(numero)')
+        .select('*, hotel_minibar_prodotti(nome,categoria), hotel_camere(nome)')
         .eq('azienda_id', aziendaId)
         .gte('data_consumo', dal)
         .lte('data_consumo', al),
@@ -327,7 +327,7 @@ export async function render(container) {
                 const adr = r.notti > 0 ? r.ricavo / r.notti : 0;
                 return `
                   <tr style="border-bottom:1px solid #f1f5f9;">
-                    <td style="padding:10px 12px;font-weight:600;">${esc(r.camera.numero||r.camera.nome||'—')} <span style="font-size:11px;color:#94a3b8;">${esc(r.camera.tipo||'')}</span></td>
+                    <td style="padding:10px 12px;font-weight:600;">${esc(r.camera.nome||'—')} <span style="font-size:11px;color:#94a3b8;">${esc(r.camera.tipologia||'')}</span></td>
                     <td style="padding:10px 12px;text-align:right;">${r.pren}</td>
                     <td style="padding:10px 12px;text-align:right;">${r.notti}</td>
                     <td style="padding:10px 12px;text-align:right;">
@@ -635,7 +635,7 @@ export async function render(container) {
     // Per camera
     const perCamera = {};
     consumi.forEach(c => {
-      const cam = c.hotel_camere?.numero||'?';
+      const cam = c.hotel_camere?.nome||'?';
       if (!perCamera[cam]) perCamera[cam] = { qty:0, importo:0 };
       perCamera[cam].qty     += Number(c.quantita)||1;
       perCamera[cam].importo += Number(c.importo)||0;
