@@ -101,7 +101,7 @@ async function renderTabTask(box) {
         .eq('azienda_id', aziendaId)
         .eq('attivo', true),
       supabase.from('hotel_camere')
-        .select('id,numero,nome')
+        .select('id,nome,tipologia')
         .eq('azienda_id', aziendaId),
     ]);
     return { tasks: tasks||[], dipendenti: dipendenti||[], camere: camere||[] };
@@ -338,7 +338,7 @@ function formTaskHTML(dipendenti, camere, data) {
         <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Camera</label>
         <select id="nt-camera" class="input">
           <option value="">— Nessuna —</option>
-          ${camere.map(c=>`<option value="${c.id}" data-num="${c.numero||c.nome}">${esc(c.numero||c.nome)}</option>`).join('')}
+          ${camere.map(c=>`<option value="${c.id}" data-num="${esc(c.nome)}">${esc(c.nome)}</option>`).join('')}
         </select>
       </div>
       <div>
@@ -416,7 +416,7 @@ async function generaTaskAutomatici(aziendaId, data) {
       .not('stato','in','(cancellata,noshow)')
       .lte('data_checkin', data)
       .gte('data_checkout', data),
-    supabase.from('hotel_camere').select('id,numero,nome,tipo').eq('azienda_id', aziendaId),
+    supabase.from('hotel_camere').select('id,nome,tipologia').eq('azienda_id', aziendaId),
   ]);
 
   const dataD = new Date(data);
@@ -427,7 +427,7 @@ async function generaTaskAutomatici(aziendaId, data) {
 
     for (const regola of (regole||[])) {
       // Filtro per tipo camera
-      if (regola.applicabile_a === 'tipo_camera' && regola.tipo_camera !== cam.tipo) continue;
+      if (regola.applicabile_a === 'tipo_camera' && regola.tipo_camera !== cam.tipologia) continue;
 
       let generaTask = false;
 
@@ -459,7 +459,7 @@ async function generaTaskAutomatici(aziendaId, data) {
         azienda_id:          aziendaId,
         data,
         camera_id:           cam.id,
-        camera_numero:       cam.numero || cam.nome,
+        camera_numero:       cam.nome,
         prenotazione_id:     pren?.id || null,
         regola_id:           regola.id,
         tipo:                regola.tipo,
