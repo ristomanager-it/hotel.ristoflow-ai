@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Operatore — Ristoflow Hotel</title>
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+    body { font-family:system-ui,-apple-system,sans-serif; background:#f0f4f8; color:#1e293b; min-height:100vh; }
+    .screen { display:none; min-height:100vh; }
+    .screen.active { display:flex; flex-direction:column; }
+
+    /* LOGIN */
+    .login-wrap { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; }
+    .login-logo { width:80px; height:80px; background:linear-gradient(135deg,#0E5A7A,#1a7a9f); border-radius:24px; display:flex; align-items:center; justify-content:center; font-size:36px; margin-bottom:20px; box-shadow:0 8px 24px rgba(14,90,122,.3); }
+    .login-titolo { font-size:22px; font-weight:800; margin-bottom:4px; text-align:center; }
+    .login-sub { font-size:14px; color:#64748b; margin-bottom:32px; text-align:center; }
+    .login-nome { font-size:18px; font-weight:700; color:#0E5A7A; margin-bottom:24px; text-align:center; min-height:24px; }
+    .pin-display { display:flex; gap:12px; justify-content:center; margin-bottom:28px; }
+    .pin-dot { width:18px; height:18px; border-radius:50%; background:#e2e8f0; transition:background .15s; }
+    .pin-dot.filled { background:#0E5A7A; }
+    .pin-dot.error { background:#dc2626; }
+    .pin-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; width:100%; max-width:300px; }
+    .pin-btn { background:white; border:none; border-radius:16px; padding:18px; font-size:22px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.08); transition:transform .1s,box-shadow .1s; color:#1e293b; }
+    .pin-btn:active { transform:scale(.94); box-shadow:0 1px 4px rgba(0,0,0,.08); }
+    .pin-btn.del { font-size:18px; color:#64748b; }
+    .pin-error { color:#dc2626; font-size:13px; font-weight:600; text-align:center; min-height:20px; margin-bottom:12px; }
+
+    /* HEADER OPERATORE */
+    .op-header { background:linear-gradient(135deg,#0E5A7A,#1a7a9f); color:white; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
+    .op-header-info { display:flex; align-items:center; gap:12px; }
+    .op-avatar { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.25); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; overflow:hidden; }
+    .op-avatar img { width:100%; height:100%; object-fit:cover; }
+    .op-nome { font-weight:700; font-size:16px; }
+    .op-data { font-size:12px; opacity:.8; margin-top:2px; }
+    .op-logout { background:rgba(255,255,255,.15); border:none; color:white; padding:6px 12px; border-radius:20px; cursor:pointer; font-size:12px; font-weight:600; }
+
+    /* BOTTOM NAV */
+    .bottom-nav { background:white; border-top:1px solid #e5e7eb; display:flex; position:sticky; bottom:0; z-index:100; box-shadow:0 -2px 12px rgba(0,0,0,.06); }
+    .nav-btn { flex:1; padding:10px 4px 12px; border:none; background:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; font-size:10px; font-weight:600; color:#94a3b8; transition:color .15s; }
+    .nav-btn.active { color:#0E5A7A; }
+    .nav-btn .nav-icon { font-size:22px; }
+
+    /* CONTENT */
+    .op-content { flex:1; overflow-y:auto; padding:16px; padding-bottom:80px; }
+
+    /* TASK CARDS */
+    .task-card { background:white; border-radius:16px; padding:16px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,.06); border-left:4px solid #e5e7eb; transition:transform .1s; }
+    .task-card.alta { border-left-color:#dc2626; }
+    .task-card.media { border-left-color:#d97706; }
+    .task-card.bassa { border-left-color:#64748b; }
+    .task-card.in_corso { border-left-color:#0E5A7A; background:#f0f9ff; }
+    .task-card.fatto { border-left-color:#059669; background:#f0fdf4; opacity:.7; }
+    .task-card.saltato { opacity:.5; }
+    .task-icon { font-size:32px; margin-bottom:8px; }
+    .task-nome { font-size:16px; font-weight:700; margin-bottom:4px; }
+    .task-meta { font-size:12px; color:#64748b; margin-bottom:10px; display:flex; gap:10px; flex-wrap:wrap; }
+    .task-istruzioni { background:#f8fafc; border-radius:10px; padding:10px 12px; font-size:13px; color:#374151; margin-bottom:12px; }
+    .task-timer { font-size:24px; font-weight:800; color:#0E5A7A; text-align:center; padding:8px; margin-bottom:10px; }
+    .task-actions { display:flex; gap:8px; }
+    .task-btn { flex:1; padding:12px; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; transition:transform .1s; }
+    .task-btn:active { transform:scale(.97); }
+    .task-btn.inizia { background:#0E5A7A; color:white; }
+    .task-btn.completa { background:#059669; color:white; }
+    .task-btn.salta { background:#f1f5f9; color:#64748b; }
+    .task-btn.secondary { background:#f1f5f9; color:#374151; }
+
+    /* MINIBAR */
+    .minibar-camera { background:white; border-radius:14px; padding:14px; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+    .minibar-camera-titolo { font-size:15px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+    .minibar-item { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9; }
+    .minibar-item:last-child { border-bottom:none; }
+    .minibar-item-nome { font-size:14px; flex:1; }
+    .minibar-item-prezzo { font-size:12px; color:#64748b; margin-right:10px; }
+    .qty-control { display:flex; align-items:center; gap:8px; }
+    .qty-btn { width:32px; height:32px; border:none; border-radius:8px; background:#f1f5f9; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:700; }
+    .qty-val { font-size:16px; font-weight:700; min-width:24px; text-align:center; }
+
+    /* COLAZIONE */
+    .ordine-card { background:white; border-radius:14px; padding:14px; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+    .ordine-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+    .ordine-camera { font-size:15px; font-weight:700; }
+    .ordine-ora { font-size:13px; color:#0E5A7A; font-weight:600; background:#f0f9ff; padding:3px 10px; border-radius:20px; }
+    .stato-badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+    .badge-attesa { background:#fef3c7; color:#92400e; }
+    .badge-preparato { background:#dbeafe; color:#1d4ed8; }
+    .badge-consegnato { background:#dcfce7; color:#166534; }
+    .intolleranze-alert { background:#fee2e2; border-radius:8px; padding:8px 12px; font-size:12px; color:#991b1b; font-weight:600; margin-bottom:8px; }
+
+    /* EMPTY STATE */
+    .empty-state { text-align:center; padding:48px 20px; color:#94a3b8; }
+    .empty-icon { font-size:48px; margin-bottom:12px; }
+    .empty-title { font-size:16px; font-weight:700; color:#374151; margin-bottom:4px; }
+    .empty-sub { font-size:13px; }
+
+    /* TOAST */
+    .toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#1e293b; color:white; padding:12px 20px; border-radius:12px; font-size:14px; font-weight:600; z-index:9999; opacity:0; transition:opacity .3s; white-space:nowrap; }
+    .toast.show { opacity:1; }
+
+    .badge-count { background:#dc2626; color:white; border-radius:50%; width:18px; height:18px; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; position:absolute; top:6px; right:calc(50% - 18px); }
+  </style>
+</head>
+<body>
+
+<!-- SCREEN: LOGIN -->
+<div id="screen-login" class="screen active">
+  <div class="login-wrap">
+    <div class="login-logo">🏨</div>
+    <div class="login-titolo">Ristoflow Hotel</div>
+    <div class="login-sub">Area operatori</div>
+    <div class="login-nome" id="login-nome">Caricamento...</div>
+    <div class="pin-display" id="pin-display">
+      <div class="pin-dot" id="dot-0"></div>
+      <div class="pin-dot" id="dot-1"></div>
+      <div class="pin-dot" id="dot-2"></div>
+      <div class="pin-dot" id="dot-3"></div>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="pin-pad" id="pin-pad">
+      ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(n=>`
+        <button class="pin-btn${n==='⌫'?' del':''}" data-pin="${n}">${n}</button>
+      `).join('')}
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: APP OPERATORE -->
+<div id="screen-app" class="screen">
+
+  <!-- HEADER -->
+  <div class="op-header">
+    <div class="op-header-info">
+      <div class="op-avatar" id="op-avatar">👤</div>
+      <div>
+        <div class="op-nome" id="op-nome-header">Operatore</div>
+        <div class="op-data" id="op-data-header"></div>
+      </div>
+    </div>
+    <button class="op-logout" id="btn-logout">Esci</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="op-content" id="op-content"></div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-section="task" id="nav-task">
+      <span class="nav-icon">📋</span>
+      Task
+      <div class="badge-count" id="badge-task" style="display:none;"></div>
+    </button>
+    <button class="nav-btn" data-section="colazione" id="nav-colazione">
+      <span class="nav-icon">☕</span>
+      Colazione
+    </button>
+    <button class="nav-btn" data-section="minibar" id="nav-minibar">
+      <span class="nav-icon">🍾</span>
+      Minibar
+    </button>
+    <button class="nav-btn" data-section="storico" id="nav-storico">
+      <span class="nav-icon">📊</span>
+      Storico
+    </button>
+  </nav>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function() {
+  const SUPABASE_URL  = "https://cuhcscpvhypoaplcmtjk.supabase.co";
+  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1aGNzY3B2aHlwb2FwbGNtdGprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MjY4MjgsImV4cCI6MjA3OTQwMjgyOH0.q9zAs0oh8F1-whtORHBIORF5jIn1NTS3LvSMWleP0a0";
+  const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get('token');
+  const oggi   = new Date().toISOString().split('T')[0];
+
+  let operatore = null;
+  let pinInput  = '';
+  let sectionAttiva = 'task';
+  let timers = {};
+
+  // ── LOGIN ────────────────────────────────────────────────────
+  async function inizializza() {
+    if (!token) { showError('Token mancante'); return; }
+
+    const { data: dip } = await supa
+      .from('dipendenti')
+      .select('id,nome,cognome,pin,foto_url,azienda_id,ruolo')
+      .eq('token_operatore', token)
+      .eq('attivo', true)
+      .maybeSingle();
+
+    if (!dip) { showError('Operatore non trovato'); return; }
+    operatore = dip;
+    document.getElementById('login-nome').textContent = `Ciao, ${dip.nome}!`;
+  }
+
+  function showError(msg) {
+    document.getElementById('login-nome').textContent = msg;
+    document.getElementById('login-nome').style.color = '#dc2626';
+  }
+
+  // PIN pad
+  document.getElementById('pin-pad').addEventListener('click', e => {
+    const btn = e.target.closest('[data-pin]');
+    if (!btn) return;
+    const val = btn.dataset.pin;
+    if (val === '⌫') {
+      pinInput = pinInput.slice(0,-1);
+    } else if (val !== '' && pinInput.length < 4) {
+      pinInput += val;
+    }
+    aggiornaDisplay();
+    if (pinInput.length === 4) verificaPin();
+  });
+
+  function aggiornaDisplay() {
+    for (let i=0; i<4; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      dot.className = 'pin-dot' + (i < pinInput.length ? ' filled' : '');
+    }
+  }
+
+  async function verificaPin() {
+    if (!operatore) return;
+    if (String(operatore.pin) === String(pinInput)) {
+      // PIN corretto → entra
+      document.getElementById('screen-login').classList.remove('active');
+      document.getElementById('screen-app').classList.add('active');
+      document.getElementById('op-nome-header').textContent = `${operatore.nome} ${operatore.cognome||''}`;
+      document.getElementById('op-data-header').textContent = formatData(oggi);
+      if (operatore.foto_url) {
+        document.getElementById('op-avatar').innerHTML = `<img src="${operatore.foto_url}" alt="">`;
+      } else {
+        document.getElementById('op-avatar').textContent = operatore.nome[0];
+      }
+      caricaSezione('task');
+    } else {
+      // PIN errato
+      pinInput = '';
+      aggiornaDisplay();
+      for (let i=0; i<4; i++) document.getElementById(`dot-${i}`).className = 'pin-dot error';
+      document.getElementById('pin-error').textContent = 'PIN non corretto';
+      setTimeout(() => {
+        for (let i=0; i<4; i++) document.getElementById(`dot-${i}`).className = 'pin-dot';
+        document.getElementById('pin-error').textContent = '';
+      }, 1000);
+    }
+  }
+
+  // Logout
+  document.getElementById('btn-logout').onclick = () => {
+    pinInput = '';
+    aggiornaDisplay();
+    document.getElementById('screen-app').classList.remove('active');
+    document.getElementById('screen-login').classList.add('active');
+    Object.values(timers).forEach(clearInterval);
+  };
+
+  // Nav
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      caricaSezione(btn.dataset.section);
+    };
+  });
+
+  // ── SEZIONI ──────────────────────────────────────────────────
+  async function caricaSezione(sezione) {
+    sectionAttiva = sezione;
+    const content = document.getElementById('op-content');
+    content.innerHTML = '<div style="text-align:center;padding:48px;color:#94a3b8;">⏳</div>';
+    switch(sezione) {
+      case 'task':      await renderTask(content);      break;
+      case 'colazione': await renderColazione(content); break;
+      case 'minibar':   await renderMinibar(content);   break;
+      case 'storico':   await renderStorico(content);   break;
+    }
+  }
+
+  // ── TASK ─────────────────────────────────────────────────────
+  async function renderTask(content) {
+    const { data: tasks } = await supa
+      .from('hotel_operations_task')
+      .select('*')
+      .eq('azienda_id', operatore.azienda_id)
+      .eq('assegnato_a', operatore.id)
+      .eq('data', oggi)
+      .not('stato','eq','saltato')
+      .order('priorita').order('camera_numero');
+
+    const daFare = (tasks||[]).filter(t=>t.stato!=='fatto').length;
+    const badge = document.getElementById('badge-task');
+    if (daFare > 0) { badge.style.display='flex'; badge.textContent=daFare; }
+    else badge.style.display='none';
+
+    if (!tasks?.length) {
+      content.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">✅</div>
+          <div class="empty-title">Nessun task assegnato</div>
+          <div class="empty-sub">I task di oggi appariranno qui</div>
+        </div>
+      `;
+      return;
+    }
+
+    const fatti   = tasks.filter(t=>t.stato==='fatto').length;
+    const totale  = tasks.length;
+
+    content.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px;">I tuoi task — ${formatData(oggi)}</div>
+        <div style="background:#e5e7eb;border-radius:999px;height:8px;overflow:hidden;">
+          <div style="background:#059669;width:${Math.round(fatti/totale*100)}%;height:100%;border-radius:999px;transition:width .4s;"></div>
+        </div>
+        <div style="font-size:12px;color:#64748b;margin-top:4px;">${fatti} di ${totale} completati</div>
+      </div>
+      ${tasks.map(t => renderTaskCard(t)).join('')}
+    `;
+
+    // Binding azioni
+    content.querySelectorAll('[data-inizia]').forEach(btn => {
+      btn.onclick = async () => {
+        await supa.from('hotel_operations_task').update({
+          stato: 'in_corso',
+          ora_inizio_effettiva: new Date().toISOString()
+        }).eq('id', btn.dataset.inizia);
+        toast('⏱️ Timer avviato!');
+        caricaSezione('task');
+      };
+    });
+
+    content.querySelectorAll('[data-completa]').forEach(btn => {
+      btn.onclick = async () => {
+        const note = content.querySelector(`#note-${btn.dataset.completa}`)?.value.trim() || null;
+        await supa.from('hotel_operations_task').update({
+          stato: 'fatto',
+          ora_fine_effettiva: new Date().toISOString(),
+          note_operatore: note,
+        }).eq('id', btn.dataset.completa);
+        toast('✅ Task completato!');
+        caricaSezione('task');
+      };
+    });
+
+    content.querySelectorAll('[data-salta]').forEach(btn => {
+      btn.onclick = async () => {
+        await supa.from('hotel_operations_task').update({ stato:'saltato' }).eq('id', btn.dataset.salta);
+        caricaSezione('task');
+      };
+    });
+  }
+
+  function renderTaskCard(t) {
+    const tipo = { pulizia:'🧹',biancheria:'🛏️',minibar:'🍾',manutenzione:'🔧',colazione:'☕',custom:'📋' }[t.tipo] || '📋';
+    const isInCorso = t.stato === 'in_corso';
+    const isFatto   = t.stato === 'fatto';
+
+    // Timer live
+    let timerHtml = '';
+    if (isInCorso && t.ora_inizio_effettiva) {
+      const startMs = new Date(t.ora_inizio_effettiva).getTime();
+      timerHtml = `<div class="task-timer" id="timer-${t.id}">⏱️ --:--</div>`;
+      setTimeout(() => {
+        const el = document.getElementById(`timer-${t.id}`);
+        if (!el) return;
+        clearInterval(timers[t.id]);
+        timers[t.id] = setInterval(() => {
+          if (!document.getElementById(`timer-${t.id}`)) { clearInterval(timers[t.id]); return; }
+          const diff = Math.floor((Date.now() - startMs) / 1000);
+          const m = Math.floor(diff/60), s = diff%60;
+          document.getElementById(`timer-${t.id}`).textContent = `⏱️ ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }, 1000);
+      }, 100);
+    }
+
+    return `
+      <div class="task-card ${t.priorita} ${t.stato}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div class="task-icon">${t.icona||tipo}</div>
+          <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${{da_fare:'#fef3c7',in_corso:'#e0f2fe',fatto:'#dcfce7',saltato:'#f1f5f9'}[t.stato]};color:${{da_fare:'#92400e',in_corso:'#0E5A7A',fatto:'#166534',saltato:'#64748b'}[t.stato]};">${t.stato.replace('_',' ')}</span>
+        </div>
+        <div class="task-nome">${esc(t.nome)}</div>
+        <div class="task-meta">
+          ${t.camera_numero?`<span>🛏️ Camera ${esc(t.camera_numero)}</span>`:''}
+          <span>⏱️ ${t.durata_stimata_min} min stimati</span>
+          ${isFatto&&t.durata_effettiva_min?`<span style="color:${t.scostamento_min>5?'#dc2626':'#059669'};">✅ ${t.durata_effettiva_min} min ${t.scostamento_min!=null?(t.scostamento_min>0?'(+'+t.scostamento_min+')':'('+t.scostamento_min+')'):''}  effettivi</span>`:''}
+        </div>
+        ${t.istruzioni?`<div class="task-istruzioni">${esc(t.istruzioni)}</div>`:''}
+        ${timerHtml}
+        ${isInCorso?`
+          <div style="margin-bottom:10px;">
+            <textarea id="note-${t.id}" placeholder="Note (opzionale)..." style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;font-size:13px;resize:none;rows:2;"></textarea>
+          </div>
+        `:''}
+        ${!isFatto?`
+          <div class="task-actions">
+            ${t.stato==='da_fare'?`<button class="task-btn inizia" data-inizia="${t.id}">▶ Inizia</button>`:''}
+            ${t.stato==='in_corso'?`<button class="task-btn completa" data-completa="${t.id}">✓ Completato</button>`:''}
+            ${t.stato!=='saltato'?`<button class="task-btn salta" data-salta="${t.id}">Salta</button>`:''}
+          </div>
+        `:''}
+      </div>
+    `;
+  }
+
+  // ── COLAZIONE ─────────────────────────────────────────────────
+  async function renderColazione(content) {
+    const { data: ordini } = await supa
+      .from('hotel_colazione_ordini')
+      .select('*')
+      .eq('azienda_id', operatore.azienda_id)
+      .eq('data_colazione', oggi)
+      .not('stato','eq','annullato')
+      .order('ora_consegna');
+
+    if (!ordini?.length) {
+      content.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">☕</div>
+          <div class="empty-title">Nessun ordine colazione</div>
+          <div class="empty-sub">Gli ordini di oggi appariranno qui</div>
+        </div>`;
+      return;
+    }
+
+    content.innerHTML = `
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px;">☕ Ordini colazione — ${formatData(oggi)}</div>
+      ${ordini.map(o => `
+        <div class="ordine-card">
+          <div class="ordine-header">
+            <div>
+              <div class="ordine-camera">🛏️ Camera ${esc(o.camera_numero||'?')} — ${esc(o.ospite_nome||'Ospite')}</div>
+              <div style="font-size:12px;color:#64748b;margin-top:2px;">${o.num_persone||1} persona${(o.num_persone||1)>1?'e':''}</div>
+            </div>
+            <div class="ordine-ora">${o.ora_consegna?.slice(0,5)||'--:--'}</div>
+          </div>
+          ${o.intolleranze?.length?`<div class="intolleranze-alert">⚠️ ${o.intolleranze.join(', ')}</div>`:''}
+          ${o.items?.length?`
+            <div style="background:#f8fafc;border-radius:10px;padding:10px;margin-bottom:10px;">
+              ${o.items.map(i=>`<div style="font-size:13px;padding:3px 0;">${esc(i.nome||i.label||'—')} ${i.qty>1?'×'+i.qty:''}</div>`).join('')}
+            </div>
+          `:''}
+          ${o.note?`<div style="font-size:12px;color:#92400e;background:#fffbeb;border-radius:8px;padding:8px;margin-bottom:10px;">📝 ${esc(o.note)}</div>`:''}
+          <div style="display:flex;gap:8px;">
+            ${o.stato==='in_attesa'?`<button data-col-stato="${o.id}" data-nuovo-stato="preparato" class="task-btn inizia" style="flex:1;">✓ Preparato</button>`:''}
+            ${o.stato==='preparato'?`<button data-col-stato="${o.id}" data-nuovo-stato="consegnato" class="task-btn completa" style="flex:1;">✓ Consegnato</button>`:''}
+            <span class="stato-badge ${o.stato==='consegnato'?'badge-consegnato':o.stato==='preparato'?'badge-preparato':'badge-attesa'}">${o.stato}</span>
+          </div>
+        </div>
+      `).join('')}
+    `;
+
+    content.querySelectorAll('[data-col-stato]').forEach(btn => {
+      btn.onclick = async () => {
+        const upd = { stato: btn.dataset.nuovoStato };
+        if (btn.dataset.nuovoStato === 'consegnato') upd.consegnato_il = new Date().toISOString();
+        await supa.from('hotel_colazione_ordini').update(upd).eq('id', btn.dataset.colStato);
+        toast(btn.dataset.nuovoStato==='consegnato'?'☕ Consegnato!':'✓ Segnato preparato');
+        caricaSezione('colazione');
+      };
+    });
+  }
+
+  // ── MINIBAR ──────────────────────────────────────────────────
+  async function renderMinibar(content) {
+    const [{ data: camere }, { data: prodotti }] = await Promise.all([
+      supa.from('hotel_camere').select('id,numero,nome').eq('azienda_id', operatore.azienda_id).order('numero'),
+      supa.from('hotel_minibar_prodotti').select('*').eq('azienda_id', operatore.azienda_id).eq('attivo', true).order('categoria').order('nome'),
+    ]);
+
+    let selectedCamera = null;
+    const consumi = {}; // prodotto_id → qty
+
+    function renderCameraSelect() {
+      content.innerHTML = `
+        <div style="font-size:16px;font-weight:700;margin-bottom:16px;">🍾 Registra consumi minibar</div>
+        <div style="margin-bottom:16px;">
+          <label style="font-size:13px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Seleziona camera</label>
+          <select id="sel-camera-mb" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:12px;font-size:15px;font-weight:600;">
+            <option value="">— Seleziona —</option>
+            ${(camere||[]).map(c=>`<option value="${c.id}">${c.numero||c.nome}</option>`).join('')}
+          </select>
+        </div>
+        <div id="prodotti-wrap" style="display:none;"></div>
+        <div id="mb-salva-wrap" style="display:none;margin-top:16px;">
+          <button id="btn-salva-mb" class="task-btn completa" style="width:100%;">💾 Salva consumi</button>
+        </div>
+      `;
+
+      content.querySelector('#sel-camera-mb').onchange = function() {
+        selectedCamera = this.value;
+        Object.keys(consumi).forEach(k => delete consumi[k]);
+        if (!selectedCamera) { content.querySelector('#prodotti-wrap').style.display='none'; return; }
+        renderProdotti();
+      };
+    }
+
+    function renderProdotti() {
+      const wrap = content.querySelector('#prodotti-wrap');
+      wrap.style.display = '';
+      const gruppi = {};
+      (prodotti||[]).forEach(p => { if(!gruppi[p.categoria||'Altro']) gruppi[p.categoria||'Altro']=[]; gruppi[p.categoria||'Altro'].push(p); });
+
+      wrap.innerHTML = Object.entries(gruppi).map(([cat, prods]) => `
+        <div class="minibar-camera" style="margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:800;color:#0E5A7A;text-transform:uppercase;margin-bottom:8px;">${esc(cat)}</div>
+          ${prods.map(p => `
+            <div class="minibar-item">
+              <div class="minibar-item-nome">${esc(p.nome)}</div>
+              <div class="minibar-item-prezzo">€${Number(p.prezzo).toFixed(2)}</div>
+              <div class="qty-control">
+                <button class="qty-btn" data-dec="${p.id}">−</button>
+                <span class="qty-val" id="qty-${p.id}">0</span>
+                <button class="qty-btn" data-inc="${p.id}" style="background:#0E5A7A;color:white;">+</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+
+      wrap.querySelectorAll('[data-inc]').forEach(btn => {
+        btn.onclick = () => {
+          const id = btn.dataset.inc;
+          consumi[id] = (consumi[id]||0)+1;
+          document.getElementById(`qty-${id}`).textContent = consumi[id];
+          aggiornaSalvaBtn();
+        };
+      });
+      wrap.querySelectorAll('[data-dec]').forEach(btn => {
+        btn.onclick = () => {
+          const id = btn.dataset.dec;
+          consumi[id] = Math.max(0,(consumi[id]||0)-1);
+          if (consumi[id]===0) delete consumi[id];
+          document.getElementById(`qty-${id}`).textContent = consumi[id]||0;
+          aggiornaSalvaBtn();
+        };
+      });
+    }
+
+    function aggiornaSalvaBtn() {
+      const haConsumi = Object.values(consumi).some(v=>v>0);
+      content.querySelector('#mb-salva-wrap').style.display = haConsumi ? '' : 'none';
+    }
+
+    renderCameraSelect();
+
+    // Salva dopo render iniziale (evento delegato)
+    content.addEventListener('click', async e => {
+      if (e.target.id !== 'btn-salva-mb') return;
+      const btn = e.target;
+      btn.disabled = true; btn.textContent = '⏳ Salvataggio...';
+      const rows = Object.entries(consumi).filter(([,q])=>q>0).map(([prodId, qty]) => {
+        const prod = (prodotti||[]).find(p=>p.id===prodId);
+        return {
+          azienda_id:      operatore.azienda_id,
+          camera_id:       selectedCamera,
+          prodotto_id:     prodId,
+          quantita:        qty,
+          prezzo_unitario: prod?.prezzo||0,
+          importo:         (prod?.prezzo||0)*qty,
+          data_consumo:    oggi,
+          registrato_da:   null,
+        };
+      });
+      const { error } = await supa.from('hotel_minibar_consumi').insert(rows);
+      if (error) { toast('❌ Errore: '+error.message); btn.disabled=false; btn.textContent='💾 Salva consumi'; return; }
+      toast('✅ Consumi registrati!');
+      renderCameraSelect();
+    });
+  }
+
+  // ── STORICO ──────────────────────────────────────────────────
+  async function renderStorico(content) {
+    const { data: log } = await supa
+      .from('hotel_operations_log')
+      .select('*')
+      .eq('azienda_id', operatore.azienda_id)
+      .eq('dipendente_id', operatore.id)
+      .order('data', { ascending:false })
+      .order('created_at', { ascending:false })
+      .limit(50);
+
+    const entries = log || [];
+    const totMin = entries.reduce((s,e)=>s+(e.durata_effettiva_min||0),0);
+    const scostMedio = entries.filter(e=>e.scostamento_min!=null).length ?
+      Math.round(entries.reduce((s,e)=>s+(e.scostamento_min||0),0)/entries.filter(e=>e.scostamento_min!=null).length) : 0;
+
+    content.innerHTML = `
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px;">📊 Il mio storico</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+        <div style="background:white;border-radius:14px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#0E5A7A;">${entries.length}</div>
+          <div style="font-size:11px;color:#64748b;font-weight:600;">Task completati</div>
+        </div>
+        <div style="background:white;border-radius:14px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#059669;">${Math.round(totMin/60*10)/10}h</div>
+          <div style="font-size:11px;color:#64748b;font-weight:600;">Ore lavorate</div>
+        </div>
+        <div style="background:white;border-radius:14px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:${scostMedio>5?'#dc2626':scostMedio<-5?'#059669':'#d97706'};">${scostMedio>0?'+':''}${scostMedio}m</div>
+          <div style="font-size:11px;color:#64748b;font-weight:600;">Scostamento medio</div>
+        </div>
+        <div style="background:white;border-radius:14px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#7c3aed;">${entries.length>0?Math.round(totMin/entries.length):0}m</div>
+          <div style="font-size:11px;color:#64748b;font-weight:600;">Tempo medio task</div>
+        </div>
+      </div>
+
+      ${entries.map(e => `
+        <div style="background:white;border-radius:12px;padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:center;">
+          <div style="font-size:24px;">${{pulizia:'🧹',biancheria:'🛏️',minibar:'🍾',manutenzione:'🔧',colazione:'☕',custom:'📋'}[e.tipo]||'📋'}</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;">${esc(e.nome_task||'—')}</div>
+            <div style="font-size:11px;color:#64748b;">${esc(e.camera_numero?'Camera '+e.camera_numero+' · ':'')}${formatData(e.data)}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:14px;font-weight:700;">${e.durata_effettiva_min||'—'} min</div>
+            ${e.scostamento_min!=null?`<div style="font-size:11px;color:${e.scostamento_min>5?'#dc2626':'#059669'};font-weight:600;">${e.scostamento_min>0?'+':''}${e.scostamento_min}m</div>`:''}
+          </div>
+        </div>
+      `).join('')}
+      ${!entries.length?'<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">Nessun task completato</div></div>':''}
+    `;
+  }
+
+  // ── UTILS ────────────────────────────────────────────────────
+  function formatData(d) {
+    if (!d) return '—';
+    const p = d.split('-');
+    const giorni = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+    const dow = giorni[new Date(d).getDay()];
+    return `${dow} ${p[2]}/${p[1]}/${p[0]}`;
+  }
+
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+  }
+
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // ── AVVIO ────────────────────────────────────────────────────
+  inizializza();
+})();
+</script>
+</body>
+</html>
