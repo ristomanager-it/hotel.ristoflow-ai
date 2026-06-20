@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { initMenu } from "./menu.js";
 
 /* ============================================================
    ROUTES
@@ -18,7 +19,6 @@ const routes = {
   "hotel-ospiti":         () => import("./views/hotel-ospiti.js"),
   "hotel-marketing":      () => import("./views/hotel-marketing.js"),
   "hotel-messaggi":       () => import("./views/hotel-messaggi.js"),
-  "hotel-operations":     () => import("./views/hotel-operations.js"),
 };
 
 /* ============================================================
@@ -46,7 +46,6 @@ const MENU = [
   { hash: "hotel-checkin",      icon: "🛎️",  label: "Check-in / out" },
   { hash: "hotel-prenotazioni", icon: "📋", label: "Prenotazioni" },
   { hash: "hotel-colazione",    icon: "☕", label: "Colazione" },
-  { hash: "hotel-operations",   icon: "⚙️", label: "Operations" },
 
   { section: "Struttura" },
   { hash: "hotel-camere",       icon: "🛏️",  label: "Camere" },
@@ -209,6 +208,7 @@ async function resolve() {
   // Layout con sidebar
   showAppLayout();
   buildMenu(window.state.azienda);
+  initMenu(); // Tony, Social, Meteo nella topbar
 
   // Aggiorna active nel menu
   document.querySelectorAll(".menu-item").forEach(el => {
