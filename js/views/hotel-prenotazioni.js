@@ -513,7 +513,7 @@ function renderEditor(prenotazione, aziendaId, container) {
       .select("*")
       .eq("azienda_id", aziendaId)
       .eq("attiva", true)
-      .or(\`camera_id.eq.\${camOpt?.value || "null"},camera_id.is.null\`);
+      .or(`camera_id.eq.${camOpt?.value || "null"},camera_id.is.null`);
 
     const notti = Math.round((new Date(co) - new Date(ci)) / 86400000);
     let totalePrezzoNotti = 0;
