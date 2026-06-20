@@ -15,9 +15,9 @@ export async function render(container) {
         <button class="btn btn-ghost btn-sm" id="btn-next">▶</button>
         <button class="btn btn-ghost btn-sm" id="btn-oggi">Oggi</button>
         <div style="display:flex;gap:2px;background:#f1f5f9;border-radius:8px;padding:2px;">
-          <button data-vista="7"  class="btn-vista" style="padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:#0E5A7A;color:white;">7gg</button>
+          <button data-vista="7"  class="btn-vista" style="padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:none;color:#64748b;">7gg</button>
           <button data-vista="14" class="btn-vista" style="padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:none;color:#64748b;">14gg</button>
-          <button data-vista="30" class="btn-vista" style="padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:none;color:#64748b;">Mese</button>
+          <button data-vista="30" class="btn-vista" style="padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:#0E5A7A;color:white;">Mese</button>
           <button data-vista="90" class="btn-vista" style="padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:none;color:#64748b;">3 mesi</button>
         </div>
         <button class="btn btn-primary btn-sm" id="btn-nuova">+ Prenotazione</button>
@@ -66,7 +66,7 @@ export async function render(container) {
   let anno  = new Date().getFullYear();
   let mese  = new Date().getMonth(); // 0-based
   let dataInizio = new Date().toISOString().split('T')[0]; // per viste non-mese
-  let vistaGiorni = 7; // 7 | 14 | 30 | 90
+  let vistaGiorni = 30; // 7 | 14 | 30 | 90
   let camere = [];
   let prenotazioni = [];
   let dragData = null;
@@ -430,7 +430,7 @@ export async function render(container) {
         selStart = null;
 
         // Apri modal nuova prenotazione
-        apriModalNuovaPrenotazione(ci, co, selCamera, camere, container);
+        apriModalNuovaPrenotazione(ci, co, selCamera, camere, container, carica);
       });
     });
   }
@@ -673,7 +673,7 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 /* ══════════════════════════════════════════════
    MODAL NUOVA PRENOTAZIONE DAL PLANNING
 ══════════════════════════════════════════════ */
-async function apriModalNuovaPrenotazione(ci, co, cameraId, camere, container) {
+async function apriModalNuovaPrenotazione(ci, co, cameraId, camere, container, onSuccess) {
   const camera = camere.find(c => c.id === cameraId);
   const notti  = Math.round((new Date(co) - new Date(ci)) / 86400000);
 
@@ -852,7 +852,7 @@ async function apriModalNuovaPrenotazione(ci, co, cameraId, camere, container) {
     }
 
     modal.remove();
-    await carica(); // ricarica il calendario
+    if (onSuccess) await onSuccess(); // ricarica il calendario
   };
 }
 
