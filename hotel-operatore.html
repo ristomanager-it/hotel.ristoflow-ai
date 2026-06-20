@@ -473,7 +473,7 @@
   // ── MINIBAR ──────────────────────────────────────────────────
   async function renderMinibar(content) {
     const [{ data: camere }, { data: prodotti }] = await Promise.all([
-      supa.from('hotel_camere').select('id,numero,nome').eq('azienda_id', operatore.azienda_id).order('numero'),
+      supa.from('hotel_camere').select('id,nome').eq('azienda_id', operatore.azienda_id).order('nome'),
       supa.from('hotel_minibar_prodotti').select('*').eq('azienda_id', operatore.azienda_id).eq('attivo', true).order('categoria').order('nome'),
     ]);
 
@@ -487,7 +487,7 @@
           <label style="font-size:13px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Seleziona camera</label>
           <select id="sel-camera-mb" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:12px;font-size:15px;font-weight:600;">
             <option value="">— Seleziona —</option>
-            ${(camere||[]).map(c=>`<option value="${c.id}">${c.numero||c.nome}</option>`).join('')}
+            ${(camere||[]).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')}
           </select>
         </div>
         <div id="prodotti-wrap" style="display:none;"></div>
