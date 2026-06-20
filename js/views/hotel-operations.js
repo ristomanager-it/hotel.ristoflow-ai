@@ -128,6 +128,22 @@ async function renderTabTask(box) {
     const minStimati  = tasks.reduce((s,t)=>s+(t.durata_stimata_min||0),0);
     const minEffettivi= tasks.filter(t=>t.durata_effettiva_min).reduce((s,t)=>s+(t.durata_effettiva_min||0),0);
 
+    // ── Banner alert task critici ───────────────────────────
+    const critici  = tasks.filter(t => t.stato !== 'fatto' && t.stato !== 'saltato' && t.priorita === 'alta');
+    const dimenticati = tasks.filter(t => t.stato === 'da_fare' && t.generato_automatico);
+
+    let bannerHtml = '';
+    if (critici.length || dimenticati.length) {
+      bannerHtml = `
+        <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:14px;padding:14px 16px;margin-bottom:16px;">
+          <div style="font-size:14px;font-weight:800;color:#991b1b;margin-bottom:8px;">🚨 Attenzione — Task non completati</div>
+          ${critici.length ? `<div style="font-size:13px;color:#7f1d1d;margin-bottom:6px;">⚠️ <strong>${critici.length} task ad alta priorità</strong> ancora in sospeso</div>` : ''}
+          ${dimenticati.length ? `<div style="font-size:13px;color:#7f1d1d;">📋 <strong>${dimenticati.length} task automatici</strong> non avviati</div>` : ''}
+          <div style="font-size:11px;color:#991b1b;margin-top:8px;opacity:.8;">Alert WhatsApp inviato automaticamente a admin e receptionist alle 09:00 e 14:00</div>
+        </div>
+      `;
+    }
+
     box.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
         <div style="display:flex;gap:8px;align-items:center;">
@@ -140,6 +156,7 @@ async function renderTabTask(box) {
         </div>
       </div>
 
+      ${bannerHtml}
       <!-- KPI RAPIDI -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:20px;">
         ${[
