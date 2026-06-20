@@ -225,7 +225,7 @@ export async function render(container) {
 
       // Click → apri prenotazione
       bar.addEventListener("click", (e) => {
-        if (bar._dragged) return;
+        if (bar._dragDistance > 5) return; // era un drag, non click
         window.location.hash = `#/hotel-prenotazioni?id=${p.id}`;
       });
 
@@ -233,6 +233,7 @@ export async function render(container) {
       bar.addEventListener("mousedown", (e) => {
         e.preventDefault();
         bar._dragged = false;
+        bar._dragDistance = 0;
         const startX   = e.clientX;
         const startY   = e.clientY;
         const origLeft = parseInt(bar.style.left);
@@ -251,7 +252,8 @@ export async function render(container) {
         function onMove(ev) {
           const dx = ev.clientX - startX;
           const dy = ev.clientY - startY;
-          if (Math.abs(dx) > 3 || Math.abs(dy) > 3) bar._dragged = true;
+          bar._dragDistance = Math.abs(dx) + Math.abs(dy);
+          if (bar._dragDistance > 5) bar._dragged = true;
 
           bar.style.left = (origLeft + dx) + "px";
           bar.style.top  = (origTop + dy) + "px";
@@ -339,6 +341,52 @@ export async function render(container) {
         wrap.scrollLeft = Math.max(0, CAMERA_W + oggiIdx * GIORNO_W - wrap.clientWidth / 2);
       }, 100);
     }
+
+    // ── Click su celle per nuova prenotazione ──
+    let selStart = null;
+    let selCamera = null;
+    let selCells = [];
+
+    cal.querySelectorAll(".cal-cella").forEach(cella => {
+      cella.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
+        selStart = cella.dataset.data;
+        selCamera = cella.dataset.camera;
+        selCells = [cella];
+        cella.style.background = "rgba(27,79,114,.2)";
+      });
+
+      cella.addEventListener("mouseenter", (e) => {
+        if (!selStart || selCamera !== cella.dataset.camera) return;
+        // Evidenzia range
+        const startD = selStart < cella.dataset.data ? selStart : cella.dataset.data;
+        const endD   = selStart < cella.dataset.data ? cella.dataset.data : selStart;
+        cal.querySelectorAll(".cal-cella").forEach(c => {
+          if (c.dataset.camera === selCamera && c.dataset.data >= startD && c.dataset.data <= endD) {
+            c.style.background = "rgba(27,79,114,.15)";
+          } else if (!c.style.background.includes("rgb(27")) {
+            c.style.background = "";
+          }
+        });
+      });
+
+      cella.addEventListener("mouseup", (e) => {
+        if (!selStart || selCamera !== cella.dataset.camera) { selStart = null; return; }
+        const ci = selStart < cella.dataset.data ? selStart : cella.dataset.data;
+        const co_raw = selStart < cella.dataset.data ? cella.dataset.data : selStart;
+        // checkout = giorno dopo l'ultimo selezionato
+        const coDate = new Date(co_raw);
+        coDate.setDate(coDate.getDate() + 1);
+        const co = coDate.toISOString().split("T")[0];
+
+        // Reset highlight
+        cal.querySelectorAll(".cal-cella").forEach(c => c.style.background = "");
+        selStart = null;
+
+        // Apri modal nuova prenotazione
+        apriModalNuovaPrenotazione(ci, co, selCamera, camere, container);
+      });
+    });
   }
 
   // ── Navigazione mese ──
@@ -435,4 +483,233 @@ function posizionaTooltip(e) {
   if (y + 150 > window.innerHeight) y = e.clientY - 150 - margin;
   tt.style.left = x + "px";
   tt.style.top  = y + "px";
+}
+
+/* ══════════════════════════════════════════════
+   MODAL NUOVA PRENOTAZIONE DAL PLANNING
+══════════════════════════════════════════════ */
+async function apriModalNuovaPrenotazione(ci, co, cameraId, camere, container) {
+  const camera = camere.find(c => c.id === cameraId);
+  const notti  = Math.round((new Date(co) - new Date(ci)) / 86400000);
+
+  // Rimuovi modal esistente se c'è
+  document.getElementById("cal-modal-pren")?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "cal-modal-pren";
+  modal.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;
+    display:flex;align-items:center;justify-content:center;padding:16px;
+  `;
+
+  modal.innerHTML = `
+    <div style="background:white;border-radius:20px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#1B4F72,#2471A3);padding:20px 24px;border-radius:20px 20px 0 0;color:white;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:800;font-size:16px;">+ Nuova prenotazione</div>
+          <div style="font-size:13px;opacity:.8;margin-top:2px;">
+            🛏️ ${camera?.nome || "Camera"} &nbsp;·&nbsp;
+            📅 ${formatData(ci)} → ${formatData(co)} &nbsp;·&nbsp;
+            🌙 ${notti} notti
+          </div>
+        </div>
+        <button id="cal-modal-close" style="background:rgba(255,255,255,.2);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+
+      <div style="padding:20px 24px;">
+
+        <!-- Ricerca ospite esistente -->
+        <div style="background:#EBF5FB;border-radius:12px;padding:14px;margin-bottom:16px;">
+          <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#1B4F72;">🔍 Cerca ospite esistente</div>
+          <input id="cal-cerca-ospite" class="input" placeholder="Cognome, email o telefono...">
+          <div id="cal-risultati-ospite" style="margin-top:6px;max-height:150px;overflow-y:auto;"></div>
+        </div>
+
+        <!-- Form ospite -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="form-group">
+            <label>Nome *</label>
+            <input id="cal-nome" class="input" placeholder="Mario">
+          </div>
+          <div class="form-group">
+            <label>Cognome *</label>
+            <input id="cal-cognome" class="input" placeholder="Rossi">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="form-group">
+            <label>Telefono</label>
+            <input id="cal-telefono" class="input" placeholder="+39 333...">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input id="cal-email" class="input" type="email" placeholder="mario@email.it">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="form-group">
+            <label>Adulti</label>
+            <input id="cal-adulti" class="input" type="number" value="2" min="1">
+          </div>
+          <div class="form-group">
+            <label>Bambini</label>
+            <input id="cal-bambini" class="input" type="number" value="0" min="0">
+          </div>
+          <div class="form-group">
+            <label>Canale</label>
+            <select id="cal-canale" class="input">
+              <option value="diretto">Diretto</option>
+              <option value="telefono">Telefono</option>
+              <option value="booking">Booking</option>
+              <option value="airbnb">Airbnb</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="walk_in">Walk-in</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="form-group">
+            <label>Prezzo/notte (€)</label>
+            <input id="cal-prezzo" class="input" type="number" step="0.01" value="${camera?.prezzo_base || ""}">
+          </div>
+          <div class="form-group">
+            <label>Totale (€)</label>
+            <input id="cal-totale" class="input" type="number" step="0.01" value="${camera?.prezzo_base ? (camera.prezzo_base * notti).toFixed(2) : ""}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Note</label>
+          <textarea id="cal-note" class="input" rows="2" placeholder="Richieste speciali..."></textarea>
+        </div>
+
+        <div id="cal-modal-error" style="color:#DC2626;font-size:13px;margin-bottom:8px;"></div>
+
+        <div style="display:flex;gap:10px;">
+          <button id="cal-modal-salva" class="btn btn-primary" style="flex:1;">💾 Crea prenotazione</button>
+          <button id="cal-modal-apri-full" class="btn btn-ghost" style="flex:1;">📋 Apri form completo</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Chiudi
+  modal.querySelector("#cal-modal-close").onclick = () => modal.remove();
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  // Calcolo totale automatico
+  const prezzoEl  = modal.querySelector("#cal-prezzo");
+  const totaleEl  = modal.querySelector("#cal-totale");
+  prezzoEl.oninput = () => {
+    const p = parseFloat(prezzoEl.value) || 0;
+    totaleEl.value = (p * notti).toFixed(2);
+  };
+
+  // Ricerca ospite esistente
+  let searchTimer;
+  modal.querySelector("#cal-cerca-ospite").oninput = () => {
+    clearTimeout(searchTimer);
+    const q = modal.querySelector("#cal-cerca-ospite").value.trim();
+    if (q.length < 2) { modal.querySelector("#cal-risultati-ospite").innerHTML = ""; return; }
+    searchTimer = setTimeout(() => cercaOspiteModal(q, modal), 300);
+  };
+
+  // Apri form completo
+  modal.querySelector("#cal-modal-apri-full").onclick = () => {
+    modal.remove();
+    window.location.hash = `#/hotel-prenotazioni?new=1&camera=${cameraId}&ci=${ci}&co=${co}`;
+  };
+
+  // Salva rapido
+  modal.querySelector("#cal-modal-salva").onclick = async () => {
+    const nome    = modal.querySelector("#cal-nome").value.trim();
+    const cognome = modal.querySelector("#cal-cognome").value.trim();
+    const errEl   = modal.querySelector("#cal-modal-error");
+
+    if (!nome)    { errEl.textContent = "Inserisci il nome"; return; }
+    if (!cognome) { errEl.textContent = "Inserisci il cognome"; return; }
+
+    const btn = modal.querySelector("#cal-modal-salva");
+    btn.disabled = true; btn.textContent = "Salvataggio...";
+
+    const { data: az } = await supabase.from("utenti_aziende")
+      .select("azienda_id").eq("user_id", (await supabase.auth.getUser()).data.user?.id).limit(1).single();
+
+    const prezzo = parseFloat(modal.querySelector("#cal-prezzo").value) || null;
+    const totale = parseFloat(modal.querySelector("#cal-totale").value) || null;
+
+    const { error } = await supabase.from("hotel_prenotazioni").insert({
+      azienda_id:      window.state.azienda.id,
+      camera_id:       cameraId,
+      canale:          modal.querySelector("#cal-canale").value,
+      stato:           "confermata",
+      ospite_nome:     nome,
+      ospite_cognome:  cognome,
+      ospite_telefono: modal.querySelector("#cal-telefono").value.trim() || null,
+      ospite_email:    modal.querySelector("#cal-email").value.trim() || null,
+      data_checkin:    ci,
+      data_checkout:   co,
+      adulti:          parseInt(modal.querySelector("#cal-adulti").value) || 1,
+      bambini:         parseInt(modal.querySelector("#cal-bambini").value) || 0,
+      prezzo_notte:    prezzo,
+      prezzo_totale:   totale,
+      stato_pagamento: "non_pagato",
+      note_interne:    modal.querySelector("#cal-note").value.trim() || null,
+    });
+
+    if (error) {
+      errEl.textContent = error.message;
+      btn.disabled = false; btn.textContent = "💾 Crea prenotazione";
+      return;
+    }
+
+    modal.remove();
+    await carica(); // ricarica il calendario
+  };
+}
+
+async function cercaOspiteModal(q, modal) {
+  const { data } = await supabase
+    .from("hotel_prenotazioni")
+    .select("ospite_nome, ospite_cognome, ospite_email, ospite_telefono")
+    .eq("azienda_id", window.state.azienda.id)
+    .or(`ospite_cognome.ilike.%${q}%,ospite_email.ilike.%${q}%,ospite_telefono.ilike.%${q}%`)
+    .order("data_checkin", { ascending: false })
+    .limit(5);
+
+  const res = modal.querySelector("#cal-risultati-ospite");
+  if (!data || data.length === 0) { res.innerHTML = ""; return; }
+
+  // Deduplica per nome+cognome+email
+  const visti = new Set();
+  const unici = data.filter(p => {
+    const k = `${p.ospite_nome}|${p.ospite_cognome}|${p.ospite_email}`;
+    if (visti.has(k)) return false;
+    visti.add(k); return true;
+  });
+
+  res.innerHTML = unici.map((p, i) => `
+    <div class="osp-result" data-idx="${i}" style="
+      padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;
+      border:1px solid #e2e8f0;margin-bottom:4px;background:white;
+    ">
+      <strong>${p.ospite_nome} ${p.ospite_cognome}</strong>
+      <span style="color:#64748b;font-size:11px;"> · ${p.ospite_email || p.ospite_telefono || ""}</span>
+    </div>
+  `).join("");
+
+  res.querySelectorAll(".osp-result").forEach(el => {
+    el.onclick = () => {
+      const p = unici[parseInt(el.dataset.idx)];
+      modal.querySelector("#cal-nome").value     = p.ospite_nome || "";
+      modal.querySelector("#cal-cognome").value  = p.ospite_cognome || "";
+      modal.querySelector("#cal-email").value    = p.ospite_email || "";
+      modal.querySelector("#cal-telefono").value = p.ospite_telefono || "";
+      modal.querySelector("#cal-cerca-ospite").value = "";
+      res.innerHTML = "";
+    };
+  });
 }
