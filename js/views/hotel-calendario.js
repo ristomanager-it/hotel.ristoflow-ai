@@ -7,13 +7,19 @@ export async function render(container) {
     <div class="page-header">
       <div>
         <div class="page-title">📅 Planning camere</div>
-        <div class="page-sub">Trascina per spostare date o camera</div>
+        <div class="page-sub">Trascina per spostare la prenotazione · Clicca per aprire</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <button class="btn btn-ghost btn-sm" id="btn-prev">◀</button>
-        <span id="label-mese" style="font-weight:700;font-size:15px;min-width:140px;text-align:center;"></span>
+        <span id="label-mese" style="font-weight:700;font-size:15px;min-width:160px;text-align:center;"></span>
         <button class="btn btn-ghost btn-sm" id="btn-next">▶</button>
         <button class="btn btn-ghost btn-sm" id="btn-oggi">Oggi</button>
+        <div style="display:flex;gap:2px;background:#f1f5f9;border-radius:8px;padding:2px;">
+          <button data-vista="7"  class="btn-vista" style="padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:#0E5A7A;color:white;">7gg</button>
+          <button data-vista="14" class="btn-vista" style="padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:none;color:#64748b;">14gg</button>
+          <button data-vista="30" class="btn-vista" style="padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:none;color:#64748b;">Mese</button>
+          <button data-vista="90" class="btn-vista" style="padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:none;color:#64748b;">3 mesi</button>
+        </div>
         <button class="btn btn-primary btn-sm" id="btn-nuova">+ Prenotazione</button>
       </div>
     </div>
@@ -59,35 +65,75 @@ export async function render(container) {
 
   let anno  = new Date().getFullYear();
   let mese  = new Date().getMonth(); // 0-based
+  let dataInizio = new Date().toISOString().split('T')[0]; // per viste non-mese
+  let vistaGiorni = 7; // 7 | 14 | 30 | 90
   let camere = [];
   let prenotazioni = [];
   let dragData = null;
 
+  function getRange() {
+    // Per vista mese (30gg) usa logica mese, altrimenti usa dataInizio + n giorni
+    if (vistaGiorni === 30) {
+      const dal = primoGiornoMese(anno, mese);
+      const al  = ultimoGiornoMese(anno, mese);
+      return { dal, al };
+    }
+    const d = new Date(dataInizio);
+    const al = new Date(d);
+    al.setDate(al.getDate() + vistaGiorni - 1);
+    return { dal: dataInizio, al: al.toISOString().split('T')[0] };
+  }
+
+  function aggiornaLabelMese() {
+    const { dal, al } = getRange();
+    if (vistaGiorni === 30) {
+      document.getElementById('label-mese').textContent =
+        new Date(anno, mese, 1).toLocaleDateString('it-IT', { month:'long', year:'numeric' });
+    } else {
+      const fmtOpts = { day:'numeric', month:'short' };
+      const s = new Date(dal).toLocaleDateString('it-IT', fmtOpts);
+      const e = new Date(al).toLocaleDateString('it-IT', fmtOpts);
+      document.getElementById('label-mese').textContent = `${s} – ${e}`;
+    }
+  }
+
+  function giorniRange(dal, al) {
+    const giorni = [];
+    const d = new Date(dal);
+    const end = new Date(al);
+    while (d <= end) {
+      giorni.push(d.toISOString().split('T')[0]);
+      d.setDate(d.getDate() + 1);
+    }
+    return giorni;
+  }
+
   async function carica() {
+    const { dal, al } = getRange();
     const [{ data: c }, { data: p }] = await Promise.all([
       supabase.from("hotel_camere").select("id,nome,tipologia,prezzo_base").eq("azienda_id", az.id).eq("attiva", true).order("ordine").order("nome"),
       supabase.from("hotel_prenotazioni")
-        .select("id,camera_id,ospite_nome,ospite_cognome,data_checkin,data_checkout,stato,adulti,prezzo_totale,colazione_inclusa,notti")
+        .select("id,camera_id,ospite_nome,ospite_cognome,ospite_telefono,ospite_email,data_checkin,data_checkout,stato,adulti,bambini,prezzo_totale,prezzo_notte,colazione_inclusa,notti,canale,stato_pagamento,note_interne,note_ospite")
         .eq("azienda_id", az.id)
         .not("stato","in","(cancellata,noshow)")
-        .gte("data_checkout", primoGiornoMese(anno, mese))
-        .lte("data_checkin",  ultimoGiornoMese(anno, mese)),
+        .gte("data_checkout", dal)
+        .lte("data_checkin",  al),
     ]);
     camere = c || [];
     prenotazioni = p || [];
+    aggiornaLabelMese();
     renderCalendario();
   }
 
   function renderCalendario() {
-    const giorni = giorniDelMese(anno, mese);
+    const { dal, al } = getRange();
+    const giorni = giorniRange(dal, al);
     const nGiorni = giorni.length;
     const oggi = new Date().toISOString().split("T")[0];
 
-    document.getElementById("label-mese").textContent =
-      new Date(anno, mese, 1).toLocaleDateString("it-IT", { month:"long", year:"numeric" });
-
     const CAMERA_W = 120;
-    const GIORNO_W = 36;
+    // Larghezza cella più stretta per viste lunghe
+    const GIORNO_W = vistaGiorni <= 14 ? 48 : vistaGiorni <= 30 ? 36 : 28;
     const ROW_H    = 44;
     const HEAD_H   = 48;
 
@@ -223,10 +269,10 @@ export async function render(container) {
         document.getElementById("cal-tooltip").style.display = "none";
       });
 
-      // Click → apri prenotazione
+      // Click → apri modale dettaglio
       bar.addEventListener("click", (e) => {
-        if (bar._dragDistance > 5) return; // era un drag, non click
-        window.location.hash = `#/hotel-prenotazioni?id=${p.id}`;
+        if (bar._dragDistance > 5) return;
+        apriModalDettaglio(p);
       });
 
       // ── DRAG & DROP ──
@@ -389,20 +435,52 @@ export async function render(container) {
     });
   }
 
-  // ── Navigazione mese ──
+  // ── Navigazione ──
   document.getElementById("btn-prev").onclick = () => {
-    mese--; if (mese < 0) { mese = 11; anno--; }
+    if (vistaGiorni === 30) {
+      mese--; if (mese < 0) { mese = 11; anno--; }
+    } else {
+      const d = new Date(dataInizio);
+      d.setDate(d.getDate() - vistaGiorni);
+      dataInizio = d.toISOString().split('T')[0];
+    }
     carica();
   };
   document.getElementById("btn-next").onclick = () => {
-    mese++; if (mese > 11) { mese = 0; anno++; }
+    if (vistaGiorni === 30) {
+      mese++; if (mese > 11) { mese = 0; anno++; }
+    } else {
+      const d = new Date(dataInizio);
+      d.setDate(d.getDate() + vistaGiorni);
+      dataInizio = d.toISOString().split('T')[0];
+    }
     carica();
   };
   document.getElementById("btn-oggi").onclick = () => {
     anno = new Date().getFullYear();
     mese = new Date().getMonth();
+    dataInizio = new Date().toISOString().split('T')[0];
     carica();
   };
+
+  // ── Switch vista ──
+  container.querySelectorAll('.btn-vista').forEach(btn => {
+    btn.onclick = () => {
+      vistaGiorni = parseInt(btn.dataset.vista);
+      container.querySelectorAll('.btn-vista').forEach(b => {
+        b.style.background = b === btn ? '#0E5A7A' : 'none';
+        b.style.color      = b === btn ? 'white'   : '#64748b';
+      });
+      // Per mese: aggiusta dataInizio
+      if (vistaGiorni === 30) {
+        anno = new Date().getFullYear();
+        mese = new Date().getMonth();
+      } else {
+        dataInizio = new Date().toISOString().split('T')[0];
+      }
+      carica();
+    };
+  });
 
   document.getElementById("btn-nuova").onclick = () => {
     window.location.hash = "#/hotel-prenotazioni?new=1";
@@ -484,6 +562,113 @@ function posizionaTooltip(e) {
   tt.style.left = x + "px";
   tt.style.top  = y + "px";
 }
+
+/* ══════════════════════════════════════════════
+   MODAL DETTAGLIO PRENOTAZIONE
+══════════════════════════════════════════════ */
+async function apriModalDettaglio(p) {
+  document.getElementById("cal-modal-dettaglio")?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "cal-modal-dettaglio";
+  modal.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;
+    display:flex;align-items:center;justify-content:center;padding:16px;
+  `;
+
+  const statoColori = {
+    confermata:'#3B82F6', checkin:'#16A34A', checkout:'#C9A84C',
+    preventivo:'#9CA3AF', cancellata:'#DC2626', noshow:'#DC2626'
+  };
+  const colore = statoColori[p.stato] || '#3B82F6';
+  const notti = p.notti || Math.round((new Date(p.data_checkout) - new Date(p.data_checkin)) / 86400000);
+
+  modal.innerHTML = `
+    <div style="background:white;border-radius:20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+
+      <div style="background:linear-gradient(135deg,${colore},${colore}cc);padding:20px 24px;border-radius:20px 20px 0 0;color:white;display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-weight:800;font-size:18px;">${esc(p.ospite_nome)} ${esc(p.ospite_cognome||'')}</div>
+          <div style="font-size:13px;opacity:.85;margin-top:4px;">
+            ${p.stato?.toUpperCase()} &nbsp;·&nbsp; ${notti} nott${notti===1?'e':'i'}
+          </div>
+        </div>
+        <button id="det-close" style="background:rgba(255,255,255,.2);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+
+      <div style="padding:20px 24px;">
+
+        <!-- Date -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+          <div style="background:#f0f9ff;border-radius:12px;padding:12px;">
+            <div style="font-size:10px;font-weight:800;color:#0E5A7A;text-transform:uppercase;margin-bottom:4px;">Check-in</div>
+            <div style="font-size:16px;font-weight:800;">${formatData(p.data_checkin)}</div>
+          </div>
+          <div style="background:#f0f9ff;border-radius:12px;padding:12px;">
+            <div style="font-size:10px;font-weight:800;color:#0E5A7A;text-transform:uppercase;margin-bottom:4px;">Check-out</div>
+            <div style="font-size:16px;font-weight:800;">${formatData(p.data_checkout)}</div>
+          </div>
+        </div>
+
+        <!-- Dettagli -->
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+          ${p.ospite_telefono ? `<div style="display:flex;align-items:center;gap:10px;font-size:14px;">📞 <a href="tel:${esc(p.ospite_telefono)}" style="color:#0E5A7A;font-weight:600;">${esc(p.ospite_telefono)}</a></div>` : ''}
+          ${p.ospite_email    ? `<div style="display:flex;align-items:center;gap:10px;font-size:14px;">📧 <a href="mailto:${esc(p.ospite_email)}" style="color:#0E5A7A;font-weight:600;">${esc(p.ospite_email)}</a></div>` : ''}
+          <div style="font-size:14px;">👥 ${p.adulti||1} adult${(p.adulti||1)===1?'o':'i'}${p.bambini ? ` + ${p.bambini} bambin${p.bambini===1?'o':'i'}` : ''}</div>
+          ${p.prezzo_totale   ? `<div style="font-size:14px;">💶 <strong>€${Number(p.prezzo_totale).toFixed(2)}</strong> totale${p.prezzo_notte?` (€${Number(p.prezzo_notte).toFixed(2)}/notte)`:''}` : ''}
+          ${p.colazione_inclusa ? `<div style="font-size:14px;">☕ Colazione inclusa</div>` : ''}
+          ${p.canale          ? `<div style="font-size:14px;">📡 Canale: <strong>${esc(p.canale)}</strong></div>` : ''}
+          ${p.stato_pagamento ? `<div style="font-size:14px;">💳 Pagamento: <strong>${esc(p.stato_pagamento)}</strong></div>` : ''}
+        </div>
+
+        ${p.note_ospite  ? `<div style="background:#fffbeb;border-radius:10px;padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:12px;">📝 ${esc(p.note_ospite)}</div>` : ''}
+        ${p.note_interne ? `<div style="background:#f1f5f9;border-radius:10px;padding:10px 14px;font-size:13px;color:#374151;margin-bottom:12px;">🔒 ${esc(p.note_interne)}</div>` : ''}
+
+        <!-- Azioni -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+          <button id="det-apri-full" style="flex:1;background:#0E5A7A;color:white;border:none;padding:11px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;">
+            ✏️ Apri e modifica
+          </button>
+          <button id="det-annulla" style="background:#fee2e2;color:#dc2626;border:none;padding:11px 16px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;">
+            🗑 Annulla
+          </button>
+        </div>
+
+        <div id="det-esito" style="font-size:13px;min-height:14px;margin-top:10px;"></div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  modal.querySelector('#det-close').onclick = () => modal.remove();
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  modal.querySelector('#det-apri-full').onclick = () => {
+    modal.remove();
+    window.location.hash = `#/hotel-prenotazioni?id=${p.id}`;
+  };
+
+  modal.querySelector('#det-annulla').onclick = async () => {
+    if (!confirm(`Annullare la prenotazione di ${p.ospite_nome} ${p.ospite_cognome||''}?`)) return;
+    const btn = modal.querySelector('#det-annulla');
+    btn.disabled = true; btn.textContent = 'Annullamento...';
+    const { error } = await supabase
+      .from('hotel_prenotazioni')
+      .update({ stato: 'cancellata', updated_at: new Date().toISOString() })
+      .eq('id', p.id);
+    if (error) {
+      modal.querySelector('#det-esito').innerHTML = `<span style="color:#dc2626;">❌ ${error.message}</span>`;
+      btn.disabled = false; btn.textContent = '🗑 Annulla';
+      return;
+    }
+    modal.remove();
+    // Ricarica il calendario — trova la funzione carica nel closure globale
+    document.getElementById('btn-oggi')?.click();
+  };
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 
 /* ══════════════════════════════════════════════
    MODAL NUOVA PRENOTAZIONE DAL PLANNING
