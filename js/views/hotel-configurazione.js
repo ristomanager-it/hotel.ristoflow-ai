@@ -526,15 +526,16 @@ function renderTemplate(box, c) {
 ══════════════════════════════════════════════ */
 function renderChatbot(box, c, az) {
   const linkBooking = `https://hotel.ristoflow-ai.com/public/booking.html?az=${az.id}`;
+  const webhookUrl  = `https://cuhcscpvhypoaplcmtjk.supabase.co/functions/v1/hotel-chatbot-webhook`;
 
   box.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
       <div>
-        <div class="card">
-          <div class="card-title">🤖 Chatbot WhatsApp — Prenotazioni</div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">🤖 Chatbot WhatsApp Hotel</div>
           <div style="background:#f0fdf4;border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;color:#15803d;">
-            Il chatbot risponde automaticamente ai messaggi WhatsApp degli ospiti e guida la prenotazione.
-            Usa la stessa connessione WhatsApp Business già configurata in Ristoflow.
+            Il chatbot guida l'ospite dalla prenotazione al checkout — disponibilità, info, check-in online, colazione e assistenza.
+            Usa la connessione WhatsApp Business già configurata in Ristoflow.
           </div>
 
           <div class="form-group">
@@ -545,49 +546,97 @@ function renderChatbot(box, c, az) {
 
           <div class="form-group">
             <label>Messaggio di benvenuto</label>
-            <textarea id="cfg-chat-benvenuto" class="input" rows="4" placeholder="Es. Ciao! 👋 Benvenuto all'Hotel Campo Antico. Come posso aiutarti?&#10;&#10;Scrivi:&#10;1️⃣ Disponibilità camere&#10;2️⃣ Prezzi&#10;3️⃣ Parla con noi">${esc(c.chatbot_messaggio_benvenuto || "Ciao! 👋 Benvenuto all'Hotel Campo Antico.\n\nCome posso aiutarti?\n\n1️⃣ Disponibilità e prezzi\n2️⃣ Prenota una camera\n3️⃣ Info hotel\n4️⃣ Parla con noi")}</textarea>
+            <textarea id="cfg-chat-benvenuto" class="input" rows="6">${esc(c.chatbot_messaggio_benvenuto || `Ciao! 👋 Benvenuto a *${az.nome || 'Hotel'}*.\n\nCome posso aiutarti?\n\n1️⃣ Disponibilità e prezzi\n2️⃣ Prenota una camera\n3️⃣ Info hotel\n4️⃣ Gestisci la tua prenotazione\n5️⃣ Parla con noi`)}</textarea>
           </div>
 
           <div class="form-group">
             <label>Messaggio "non capito"</label>
-            <textarea id="cfg-chat-noncapito" class="input" rows="3" placeholder="Es. Non ho capito 😅 Scrivi 1, 2, 3 o 4 per scegliere un'opzione">${esc(c.chatbot_messaggio_non_capito || "Non ho capito 😅\n\nScrivi un numero:\n1️⃣ Disponibilità\n2️⃣ Prenota\n3️⃣ Info\n4️⃣ Staff")}</textarea>
+            <textarea id="cfg-chat-noncapito" class="input" rows="3">${esc(c.chatbot_messaggio_non_capito || "Non ho capito 😅\n\nScrivi un numero:\n1️⃣ Disponibilità\n2️⃣ Prenota\n3️⃣ Info hotel\n4️⃣ La mia prenotazione\n5️⃣ Staff")}</textarea>
           </div>
 
           <div class="form-group">
             <label>Link booking da inviare</label>
             <input id="cfg-chat-link" class="input" value="${esc(c.chatbot_link_booking || linkBooking)}">
-            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Questo link viene inviato automaticamente quando l'ospite chiede di prenotare</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Inviato automaticamente quando l'ospite chiede di prenotare</div>
           </div>
+        </div>
+
+        <!-- WEBHOOK URL -->
+        <div class="card">
+          <div class="card-title">🔗 Configurazione Webhook Meta</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Incolla questo URL nel pannello Meta Business → WhatsApp → Webhook:</div>
+          <div style="background:#0f172a;border-radius:8px;padding:10px 14px;font-family:monospace;font-size:11px;color:#86efac;word-break:break-all;margin-bottom:8px;">
+            ${webhookUrl}
+          </div>
+          <div style="font-size:12px;color:var(--muted);">Verify Token: <strong>ristoflow_hotel_2026</strong></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px;">Campi da sottoscrivere: <strong>messages</strong></div>
         </div>
       </div>
 
       <div>
-        <div class="card">
-          <div class="card-title">📱 Flusso conversazione</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Come risponde il chatbot ai messaggi degli ospiti</div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">📱 Flusso conversazione completo</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Il chatbot gestisce automaticamente questi scenari:</div>
 
           ${[
-            { trigger:"1 / disponibilit", risposta:"Risponde con le camere disponibili + link booking" },
-            { trigger:"2 / prenota", risposta:"Invia il link di prenotazione diretta" },
-            { trigger:"3 / info", risposta:"Invia indirizzo, orari, servizi hotel" },
-            { trigger:"4 / staff / aiuto", risposta:"Notifica lo staff e passa a conversazione umana" },
-            { trigger:"prezz / tariffa", risposta:"Mostra prezzi base delle camere" },
-            { trigger:"check-in / arrivo", risposta:"Invia link check-in online se prenotazione trovata" },
-            { trigger:"cancell", risposta:"Fornisce politica di cancellazione" },
+            { emoji:'1️⃣', trigger:'Disponibilità / prezzi', risposta:'Invia link booking con disponibilità in tempo reale' },
+            { emoji:'2️⃣', trigger:'Prenota / prenotazione', risposta:'Guida alla prenotazione con link diretto' },
+            { emoji:'3️⃣', trigger:'Info / dove siete / orari', risposta:'Indirizzo, orari check-in/out, link Maps' },
+            { emoji:'4️⃣', trigger:'La mia prenotazione', risposta:'Cerca per cognome → link gestione prenotazione' },
+            { emoji:'✅', trigger:'Check-in / arrivo', risposta:'Cerca prenotazione → link check-in online' },
+            { emoji:'🛫', trigger:'Check-out / partenza', risposta:'Orari checkout, assistenza saldo' },
+            { emoji:'☕', trigger:'Colazione / breakfast', risposta:'Info orari colazione + ordine' },
+            { emoji:'👤', trigger:'5 / staff / aiuto', risposta:'Notifica staff e passa a operatore umano' },
+            { emoji:'🔄', trigger:'ciao / menu / 0', risposta:'Torna al menu principale' },
           ].map(f => `
             <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">
-              <div style="background:#EBF5FB;border-radius:6px;padding:3px 8px;color:var(--primary);font-weight:700;flex-shrink:0;font-size:11px;">${f.trigger}</div>
-              <div style="color:var(--muted);">→ ${f.risposta}</div>
+              <div style="font-size:16px;flex-shrink:0;">${f.emoji}</div>
+              <div>
+                <div style="background:#EBF5FB;border-radius:6px;padding:2px 8px;color:var(--primary);font-weight:700;font-size:11px;display:inline-block;margin-bottom:2px;">${f.trigger}</div>
+                <div style="color:var(--muted);">→ ${f.risposta}</div>
+              </div>
             </div>
           `).join("")}
+        </div>
 
-          <div style="margin-top:14px;background:#FEF9C3;border-radius:10px;padding:12px;font-size:12px;color:#92400E;">
-            ⚠️ Il chatbot usa i template WhatsApp approvati da Meta. Assicurati che i template siano attivi nella configurazione WhatsApp di Ristoflow.
+        <!-- SESSIONI LIVE -->
+        <div class="card">
+          <div class="card-title">📊 Sessioni attive oggi</div>
+          <div id="chatbot-sessioni-live">
+            <div style="color:var(--muted);font-size:13px;">Caricamento...</div>
           </div>
+          <button id="btn-ricarica-sessioni" class="btn btn-ghost btn-sm" style="margin-top:10px;">🔄 Aggiorna</button>
         </div>
       </div>
     </div>
   `;
+
+  // Carica sessioni live
+  async function caricaSessioni() {
+    const { data } = await supabase
+      .from('hotel_chatbot_sessioni')
+      .select('telefono, step, updated_at')
+      .eq('azienda_id', az.id)
+      .gte('updated_at', new Date(Date.now() - 24*3600*1000).toISOString())
+      .order('updated_at', { ascending: false })
+      .limit(10);
+
+    const el = document.getElementById('chatbot-sessioni-live');
+    if (!el) return;
+    if (!data?.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;">Nessuna sessione nelle ultime 24 ore</div>'; return; }
+    el.innerHTML = data.map(s => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">
+        <div>
+          <div style="font-weight:600;">📱 ${s.telefono}</div>
+          <div style="color:var(--muted);">Step: <strong>${s.step}</strong></div>
+        </div>
+        <div style="color:var(--muted);font-size:11px;">${new Date(s.updated_at).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+    `).join('');
+  }
+
+  caricaSessioni();
+  document.getElementById('btn-ricarica-sessioni')?.addEventListener('click', caricaSessioni);
 }
 
 /* ══════════════════════════════════════════════
