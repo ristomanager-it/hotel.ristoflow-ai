@@ -499,7 +499,7 @@ function renderTemplate(box, c) {
         </div>
         <div class="form-group">
           <label>📱 RistoflowBook (portale community)</label>
-          value="${esc(c.link_ristoflowbook || ('https://social.ristoflow-ai.com/recensione?az=' + (az?.id || '') + '&tipo=hotel'))}"
+         <input id="cfg-link-ristoflowbook" class="input" type="url" value="${esc(c.link_ristoflowbook || ('https://social.ristoflow-ai.com/recensione?az=' + (az?.id || '') + '&tipo=hotel'))}" placeholder="https://social.ristoflow-ai.com/recensione?az=...">
           <div style="font-size:11px;color:var(--muted);margin-top:3px;">Portale recensioni interno — costruisce community e raccoglie dati clienti</div>
         </div>
         <div style="background:#fef3c7;border-radius:10px;padding:12px;font-size:13px;color:#92400e;">
