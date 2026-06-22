@@ -666,9 +666,24 @@ function renderTemplate(box, c, az) {
 /* ══════════════════════════════════════════════
    TAB 6 — CHATBOT
 ══════════════════════════════════════════════ */
-function renderChatbot(box, c, az) {
+async function renderChatbot(box, c, az) {
   const linkBooking = `https://hotel.ristoflow-ai.com/public/booking.html?az=${az.id}`;
-  const webhookUrl  = `https://cuhcscpvhypoaplcmtjk.supabase.co/functions/v1/hotel-chatbot-webhook`;
+
+  // Carica connessione WhatsApp reale
+  const { data: wa } = await supabase
+    .from("whatsapp_connessioni")
+    .select("numero_telefono, phone_number_id, attiva")
+    .eq("azienda_id", az.id)
+    .maybeSingle();
+
+  const waNumero   = wa?.numero_telefono || null;
+  const waAttiva   = wa?.attiva === true;
+  const waStatoBg  = waAttiva ? "#f0fdf4" : "#fff0f0";
+  const waStatoCol = waAttiva ? "#15803d" : "#991b1b";
+  const waIcona    = waAttiva ? "✅" : "⚠️";
+  const waLabel    = waAttiva
+    ? (waNumero ? `Connesso — <strong>${waNumero}</strong>` : "Connesso")
+    : "Nessuna connessione WhatsApp attiva";
 
   box.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
@@ -706,10 +721,18 @@ function renderChatbot(box, c, az) {
         <!-- INFO WHATSAPP -->
         <div class="card">
           <div class="card-title">📱 Connessione WhatsApp</div>
-          <div style="background:#f0fdf4;border-radius:10px;padding:12px;font-size:12px;color:#15803d;">
-            ✅ La connessione WhatsApp è gestita centralmente dalla piattaforma Ristoflow.<br>
-            Per modificare il numero o le credenziali vai su <strong>Ristoflow → Gestione Aziende</strong>.
+          <div style="background:${waStatoBg};border-radius:10px;padding:14px;font-size:13px;color:${waStatoCol};">
+            <div style="font-size:15px;font-weight:700;margin-bottom:6px;">${waIcona} ${waLabel}</div>
+            <div style="font-size:12px;opacity:.8;line-height:1.5;">
+              Il chatbot usa questo numero per rispondere agli ospiti.<br>
+              Per cambiare numero contatta il supporto Ristoflow.
+            </div>
           </div>
+          ${!waAttiva ? `
+          <div style="background:#fff7ed;border-radius:10px;padding:12px;margin-top:10px;font-size:12px;color:#c2410c;">
+            ⚠️ Il chatbot non funzionerà senza una connessione WhatsApp attiva.<br>
+            Contatta il supporto per attivare WhatsApp Business.
+          </div>` : ""}
         </div>
       </div>
 
