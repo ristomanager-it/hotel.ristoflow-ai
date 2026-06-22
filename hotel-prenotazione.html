@@ -251,17 +251,21 @@
     async function init() {
       var res = await supa
         .from("hotel_prenotazioni")
-        .select("*, aziende(nome, logo_url, cover_url, foto_galleria, telefono, indirizzo, citta, colore_brand, font_family, font_size, territorio), hotel_camere(nome, tipologia, descrizione, servizi, foto_url)")
+        .select("*, aziende(nome, logo_url, cover_url, foto_galleria, telefono, indirizzo, citta, colore_brand, font_family, font_size, territorio)")
         .eq("token_pubblico", token)
         .maybeSingle();
 
       // Carica configurazione hotel per servizi e link
-      var cfgRes = await supa
-        .from("hotel_configurazione")
-        .select("nome_pubblico, ora_checkin_default, ora_checkout_default, servizi_evidenza, link_google_recensione, messaggio_benvenuto, descrizione_pubblica, foto_gallery")
-        .eq("azienda_id", res.data?.azienda_id)
-        .maybeSingle();
-      var hotelCfg = cfgRes.data || {};
+      var aziendaIdPren = res.data ? res.data.azienda_id : null;
+      var hotelCfg = {};
+      if (aziendaIdPren) {
+        var cfgRes = await supa
+          .from("hotel_configurazione")
+          .select("nome_pubblico, ora_checkin_default, ora_checkout_default, servizi_evidenza, link_google_recensione, messaggio_benvenuto, descrizione_pubblica, foto_gallery")
+          .eq("azienda_id", aziendaIdPren)
+          .maybeSingle();
+        hotelCfg = cfgRes.data || {};
+      }
 
       if (res.error || !res.data) { showError("Prenotazione non trovata", "Il link potrebbe essere scaduto o non valido."); return; }
       prenotazione = res.data;
@@ -375,7 +379,7 @@
       html += buildInfoHotel(az, indirizzo, mapsQuery, cfg, p);
 
       // SERVIZI
-      html += buildServizi(cfg, p.hotel_camere);
+      html += buildServizi(cfg, null);
 
       // MAPPA EMBED
       html += buildMapsEmbed(indirizzo, mapsQuery);
