@@ -109,6 +109,20 @@
     .error-sub { font-size:14px;color:#6b7280;font-weight:600;max-width:280px; }
     .landing-footer { text-align:center;padding:28px 20px calc(28px + env(safe-area-inset-bottom));font-size:12px;color:#9ca3af;font-weight:600; }
     .landing-footer a { color:var(--brand);text-decoration:none; }
+    .servizi-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px; }
+    .servizio-chip { display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;background:var(--brand-light);border-radius:12px;font-size:11px;font-weight:700;color:var(--brand);text-align:center; }
+    .servizio-chip .s-icon { font-size:20px; }
+    .maps-embed { width:100%;height:200px;border:none;border-radius:14px;margin-top:10px; }
+    .tab-bar { display:flex;gap:4px;background:#f3f4f6;border-radius:12px;padding:4px;margin-bottom:14px; }
+    .tab-btn { flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:#6b7280;transition:all .15s; }
+    .tab-btn.active { background:#fff;color:var(--brand);box-shadow:0 1px 4px rgba(0,0,0,.1); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .wa-btn { display:flex;align-items:center;justify-content:center;gap:10px;background:#25D366;color:#fff;border:none;border-radius:16px;padding:16px;font-size:15px;font-weight:800;width:calc(100% - 24px);margin:0 12px 12px;cursor:pointer;text-decoration:none;box-shadow:0 4px 16px rgba(37,211,102,.3); }
+    .info-badge { display:inline-flex;align-items:center;gap:6px;background:var(--brand-light);color:var(--brand);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;margin:4px 4px 4px 0; }
+    .attract-card { display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #f3f4f6; }
+    .attract-card:last-child { border-bottom:none; }
+    .attract-icon { width:44px;height:44px;border-radius:12px;background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0; }
     @media (min-width: 480px) {
       .main-card { margin:0 auto 12px;max-width:480px; }
       .hero-social { max-width:480px;width:100%; }
@@ -237,9 +251,17 @@
     async function init() {
       var res = await supa
         .from("hotel_prenotazioni")
-        .select("*, aziende(nome, logo_url, cover_url, foto_galleria, telefono, indirizzo, citta, colore_brand, font_family, font_size, territorio)")
+        .select("*, aziende(nome, logo_url, cover_url, foto_galleria, telefono, indirizzo, citta, colore_brand, font_family, font_size, territorio), hotel_camere(nome, tipologia, descrizione, servizi, foto_url)")
         .eq("token_pubblico", token)
         .maybeSingle();
+
+      // Carica configurazione hotel per servizi e link
+      var cfgRes = await supa
+        .from("hotel_configurazione")
+        .select("nome_pubblico, ora_checkin_default, ora_checkout_default, servizi_evidenza, link_google_recensione, messaggio_benvenuto, descrizione_pubblica, foto_gallery")
+        .eq("azienda_id", res.data?.azienda_id)
+        .maybeSingle();
+      var hotelCfg = cfgRes.data || {};
 
       if (res.error || !res.data) { showError("Prenotazione non trovata", "Il link potrebbe essere scaduto o non valido."); return; }
       prenotazione = res.data;
@@ -265,14 +287,15 @@
         if (res2.data) prenotazione = Object.assign(prenotazione, res2.data);
       }
 
-      render();
+      render(hotelCfg);
       caricaMeteo();
     }
 
     // ════════════════════════════════════════════════════════════
     // RENDER PRINCIPALE
     // ════════════════════════════════════════════════════════════
-    function render() {
+    function render(cfg) {
+      cfg = cfg || {};
       var p = prenotazione;
       var az = azienda;
       var nome = p.cliente_nome || "Ospite";
@@ -349,7 +372,13 @@
       }
 
       // SEZIONE INFO HOTEL
-      html += buildInfoHotel(az, indirizzo, mapsQuery);
+      html += buildInfoHotel(az, indirizzo, mapsQuery, cfg, p);
+
+      // SERVIZI
+      html += buildServizi(cfg, p.hotel_camere);
+
+      // MAPPA EMBED
+      html += buildMapsEmbed(indirizzo, mapsQuery);
 
       // TERRITORIO
       if (az.territorio || p.info_territorio) {
@@ -357,7 +386,11 @@
       }
 
       // GALLERIA
-      if (galleria.length) html += buildGalleria(galleria);
+      var tutteGalleria = galleria.concat(Array.isArray(cfg.foto_gallery) ? cfg.foto_gallery : []);
+      if (tutteGalleria.length) html += buildGalleria(tutteGalleria);
+
+      // WHATSAPP
+      html += buildWAButton(az);
 
       html += '<div class="landing-footer">Gestito con ❤️ da <a href="https://ristoflow-ai.com" target="_blank">Ristoflow.Ai</a></div>';
       root.innerHTML = html;
@@ -474,12 +507,13 @@
       return html;
     }
 
-    function buildInfoHotel(az, indirizzo, mapsQuery) {
+    function buildInfoHotel(az, indirizzo, mapsQuery, cfg, p) { cfg = cfg || {}; p = p || {};
       var html = '<div class="section-card"><div class="section-title">🏨 L\'hotel</div>';
       if (az.telefono) html += '<div class="contact-row"><div class="contact-icon">📞</div><div class="contact-text"><div class="contact-label">Telefono</div><div class="contact-value">' + escHtml(az.telefono) + '</div></div><a class="contact-action" href="tel:' + escHtml(az.telefono) + '">Chiama</a></div>';
       if (indirizzo) html += '<div class="contact-row"><div class="contact-icon">📍</div><div class="contact-text"><div class="contact-label">Indirizzo</div><div class="contact-value">' + escHtml(indirizzo) + '</div></div></div>';
-      html += '<div class="contact-row"><div class="contact-icon">🕐</div><div class="contact-text"><div class="contact-label">Check-in</div><div class="contact-value">dalle 14:00</div></div></div>';
-      html += '<div class="contact-row"><div class="contact-icon">🕙</div><div class="contact-text"><div class="contact-label">Check-out</div><div class="contact-value">entro le 11:00</div></div></div>';
+      html += '<div class="contact-row"><div class="contact-icon">🕐</div><div class="contact-text"><div class="contact-label">Check-in</div><div class="contact-value">dalle ' + (cfg.ora_checkin_default || p.ora_checkin_prevista || '14:00') + '</div></div></div>';
+      html += '<div class="contact-row"><div class="contact-icon">🕙</div><div class="contact-text"><div class="contact-label">Check-out</div><div class="contact-value">entro le ' + (cfg.ora_checkout_default || p.ora_checkout_prevista || '11:00') + '</div></div></div>';
+      if (az.telefono) html += '<div class="contact-row"><div class="contact-icon">💬</div><div class="contact-text"><div class="contact-label">WhatsApp</div><div class="contact-value">' + escHtml(az.telefono) + '</div></div><a class="contact-action" style="background:#25D366;" href="https://wa.me/' + az.telefono.replace(/\D/g,"") + '" target="_blank">Scrivi</a></div>';
       html += '</div>';
       if (indirizzo) {
         html += '<div class="section-card"><div class="section-title">📍 Come raggiungerci</div>';
@@ -491,36 +525,172 @@
 
     function buildTerritorio(info) {
       if (!info) return "";
-      var html = '<div class="section-card"><div class="section-title">🌿 Scopri il territorio</div>';
-      // Info può essere stringa JSON o oggetto
       var t = typeof info === "string" ? tryParseJSON(info) : info;
-      if (!t) {
-        html += '<div style="font-size:13px;color:#6b7280;font-weight:600;line-height:1.6;">' + escHtml(String(info)) + '</div>';
-      } else {
-        if (t.descrizione) html += '<div style="font-size:13px;color:#6b7280;font-weight:600;line-height:1.6;margin-bottom:12px;">' + escHtml(t.descrizione) + '</div>';
-        if (t.attrazioni && t.attrazioni.length) {
-          t.attrazioni.forEach(function(a) {
-            html += '<div class="territorio-item"><div class="territorio-icon">🏛️</div><div><div style="font-size:13px;font-weight:800;color:#111827;">' + escHtml(a.nome || a) + '</div>';
-            if (a.distanza) html += '<div style="font-size:11px;color:#6b7280;font-weight:600;">📏 ' + escHtml(a.distanza) + '</div>';
-            if (a.descrizione) html += '<div style="font-size:12px;color:#6b7280;margin-top:2px;">' + escHtml(a.descrizione) + '</div>';
-            html += '</div></div>';
-          });
-        }
-        if (t.parcheggio) html += '<div class="territorio-item"><div class="territorio-icon">🅿️</div><div><div style="font-size:13px;font-weight:800;color:#111827;">Parcheggio</div><div style="font-size:12px;color:#6b7280;">' + escHtml(t.parcheggio) + '</div></div></div>';
-        if (t.trasporti) html += '<div class="territorio-item"><div class="territorio-icon">🚌</div><div><div style="font-size:13px;font-weight:800;color:#111827;">Come arrivare</div><div style="font-size:12px;color:#6b7280;">' + escHtml(t.trasporti) + '</div></div></div>';
+      if (!t && typeof info === "string") t = { descrizione: info };
+      if (!t) return "";
+
+      // Tab bar: Attrazioni / Come arrivare / Parcheggio
+      var tabs = [];
+      if (t.attrazioni && t.attrazioni.length) tabs.push({ id:"attr", label:"🏛️ Attrazioni" });
+      if (t.trasporti || t.come_arrivare) tabs.push({ id:"come", label:"🚌 Come arrivare" });
+      if (t.parcheggio) tabs.push({ id:"park", label:"🅿️ Parcheggio" });
+      if (t.ristoranti && t.ristoranti.length) tabs.push({ id:"rist", label:"🍽️ Ristoranti" });
+
+      var html = '<div class="section-card"><div class="section-title">🌿 Scopri il territorio</div>';
+
+      if (t.descrizione) {
+        html += '<p style="font-size:13px;color:#6b7280;line-height:1.6;margin-bottom:12px;">' + escHtml(t.descrizione) + '</p>';
       }
+
+      if (tabs.length > 1) {
+        html += '<div class="tab-bar">' + tabs.map(function(tb, i) {
+          return '<button class="tab-btn' + (i===0?' active':'') + '" onclick="switchTab(this,&quot;panel-' + tb.id + '&quot;)">' + tb.label + '</button>';
+        }).join("") + '</div>';
+      }
+
+      // Panel attrazioni
+      if (t.attrazioni && t.attrazioni.length) {
+        html += '<div id="panel-attr" class="tab-panel active">';
+        t.attrazioni.forEach(function(a) {
+          var nome = typeof a === "string" ? a : (a.nome || "");
+          var icona = a.icona || (a.tipo === "museo" ? "🏛️" : a.tipo === "natura" ? "🌲" : a.tipo === "chiesa" ? "⛪" : a.tipo === "lago" ? "🏞️" : "📍");
+          html += '<div class="attract-card">';
+          html += '<div class="attract-icon">' + icona + '</div>';
+          html += '<div style="flex:1">';
+          html += '<div style="font-size:13px;font-weight:800;color:#111827;">' + escHtml(nome) + '</div>';
+          if (a.distanza) html += '<div class="info-badge">📏 ' + escHtml(a.distanza) + '</div>';
+          if (a.tempo) html += '<div class="info-badge">🕐 ' + escHtml(a.tempo) + '</div>';
+          if (a.descrizione) html += '<div style="font-size:12px;color:#6b7280;margin-top:4px;line-height:1.5;">' + escHtml(a.descrizione) + '</div>';
+          if (a.link) html += '<a href="' + escHtml(a.link) + '" target="_blank" style="font-size:12px;color:var(--brand);font-weight:700;display:inline-block;margin-top:4px;">Scopri →</a>';
+          html += '</div></div>';
+        });
+        html += '</div>';
+      }
+
+      // Panel come arrivare
+      if (t.trasporti || t.come_arrivare) {
+        html += '<div id="panel-come" class="tab-panel' + (tabs.length <= 1 ? " active" : "") + '">';
+        var arr = t.come_arrivare || {};
+        if (arr.auto || t.trasporti) html += '<div class="attract-card"><div class="attract-icon">🚗</div><div><div style="font-size:13px;font-weight:800;color:#111827;">In auto</div><div style="font-size:12px;color:#6b7280;margin-top:2px;">' + escHtml(arr.auto || t.trasporti) + '</div></div></div>';
+        if (arr.treno) html += '<div class="attract-card"><div class="attract-icon">🚂</div><div><div style="font-size:13px;font-weight:800;color:#111827;">In treno</div><div style="font-size:12px;color:#6b7280;margin-top:2px;">' + escHtml(arr.treno) + '</div></div></div>';
+        if (arr.aereo) html += '<div class="attract-card"><div class="attract-icon">✈️</div><div><div style="font-size:13px;font-weight:800;color:#111827;">In aereo</div><div style="font-size:12px;color:#6b7280;margin-top:2px;">' + escHtml(arr.aereo) + '</div></div></div>';
+        if (arr.bus) html += '<div class="attract-card"><div class="attract-icon">🚌</div><div><div style="font-size:13px;font-weight:800;color:#111827;">In autobus</div><div style="font-size:12px;color:#6b7280;margin-top:2px;">' + escHtml(arr.bus) + '</div></div></div>';
+        html += '</div>';
+      }
+
+      // Panel parcheggio
+      if (t.parcheggio) {
+        html += '<div id="panel-park" class="tab-panel">';
+        var park = typeof t.parcheggio === "string" ? { descrizione: t.parcheggio } : t.parcheggio;
+        html += '<div class="attract-card"><div class="attract-icon">🅿️</div><div>';
+        html += '<div style="font-size:13px;font-weight:800;color:#111827;">Parcheggio</div>';
+        html += '<div style="font-size:12px;color:#6b7280;margin-top:2px;">' + escHtml(park.descrizione || t.parcheggio) + '</div>';
+        if (park.gratuito !== undefined) html += '<div class="info-badge">' + (park.gratuito ? "✅ Gratuito" : "💶 A pagamento") + '</div>';
+        if (park.distanza) html += '<div class="info-badge">📏 ' + escHtml(park.distanza) + '</div>';
+        html += '</div></div>';
+        html += '</div>';
+      }
+
+      // Panel ristoranti
+      if (t.ristoranti && t.ristoranti.length) {
+        html += '<div id="panel-rist" class="tab-panel">';
+        t.ristoranti.forEach(function(r) {
+          html += '<div class="attract-card"><div class="attract-icon">🍽️</div><div>';
+          html += '<div style="font-size:13px;font-weight:800;color:#111827;">' + escHtml(r.nome || r) + '</div>';
+          if (r.tipo) html += '<div class="info-badge">' + escHtml(r.tipo) + '</div>';
+          if (r.distanza) html += '<div class="info-badge">📏 ' + escHtml(r.distanza) + '</div>';
+          if (r.prezzo) html += '<div class="info-badge">💶 ' + escHtml(r.prezzo) + '</div>';
+          if (r.descrizione) html += '<div style="font-size:12px;color:#6b7280;margin-top:4px;">' + escHtml(r.descrizione) + '</div>';
+          html += '</div></div>';
+        });
+        html += '</div>';
+      }
+
       html += '</div>';
       return html;
     }
 
+    // Switch tab territorio
+    window.switchTab = function(btn, panelId) {
+      var card = btn.closest(".section-card");
+      card.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
+      card.querySelectorAll(".tab-panel").forEach(function(p) { p.classList.remove("active"); });
+      btn.classList.add("active");
+      var panel = card.querySelector("#" + panelId);
+      if (panel) panel.classList.add("active");
+    };
+
     function buildGalleria(galleria) {
-      if (!galleria.length) return "";
-      var html = '<div class="gallery-section"><div class="section-title">📸 L\'hotel in foto</div><div class="gallery-grid-landing">';
-      for (var i = 0; i < Math.min(galleria.length, 6); i++) {
-        html += '<div class="gallery-landing-item" data-lightbox="' + escHtml(galleria[i]) + '"><img src="' + escHtml(galleria[i]) + '" alt="Foto" loading="lazy"></div>';
+      if (!galleria || !galleria.length) return "";
+      var all = galleria.slice(0, 12);
+      var html = '<div class="gallery-section">';
+      html += '<div class="section-title">📸 La struttura in foto</div>';
+      // Griglia 3 colonne con lightbox
+      html += '<div class="gallery-grid-landing">';
+      for (var i = 0; i < Math.min(all.length, 9); i++) {
+        html += '<div class="gallery-landing-item" data-lightbox="' + escHtml(all[i]) + '">';
+        html += '<img src="' + escHtml(all[i]) + '" alt="Foto ' + (i+1) + '" loading="lazy">';
+        if (i === 8 && all.length > 9) {
+          html += '<div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;border-radius:10px;color:#fff;font-size:18px;font-weight:800;">+' + (all.length - 9) + '</div>';
+        }
+        html += '</div>';
       }
+      html += '</div>';
+      html += '</div>';
+      return html;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // SERVIZI
+    // ════════════════════════════════════════════════════════════
+    function buildServizi(cfg, camera) {
+      var servizi = cfg.servizi_evidenza || [];
+      var camServizi = (camera && camera.servizi) ? camera.servizi : [];
+      var tutti = servizi.concat(camServizi.filter(function(s) { return servizi.indexOf(s) < 0; }));
+      if (!tutti.length) return "";
+
+      var icone = {
+        wifi:"📶", piscina:"🏊", spa:"💆", parcheggio:"🅿️",
+        colazione:"☕", ristorante:"🍽️", palestra:"💪",
+        animali_ammessi:"🐾", aria_condizionata:"❄️",
+        vista_mare:"🌊", vista_montagna:"⛰️", transfer:"🚌",
+        bar:"🍹", lavanderia:"👔", cassaforte:"🔒", tv:"📺",
+        jacuzzi:"🛁", terrazza:"🌅", bici:"🚲"
+      };
+
+      var html = '<div class="section-card"><div class="section-title">✨ Servizi inclusi</div>';
+      html += '<div class="servizi-grid">';
+      tutti.forEach(function(s) {
+        var label = s.replace(/_/g, " ");
+        label = label.charAt(0).toUpperCase() + label.slice(1);
+        html += '<div class="servizio-chip"><span class="s-icon">' + (icone[s] || "✅") + '</span>' + escHtml(label) + '</div>';
+      });
       html += '</div></div>';
       return html;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // MAPPA GOOGLE EMBED
+    // ════════════════════════════════════════════════════════════
+    function buildMapsEmbed(indirizzo, mapsQuery) {
+      if (!indirizzo) return "";
+      var embedUrl = "https://maps.google.com/maps?q=" + encodeURIComponent(indirizzo) + "&output=embed&z=15";
+      var html = '<div class="section-card">';
+      html += '<div class="section-title">🗺️ Come raggiungerci</div>';
+      html += '<iframe class="maps-embed" src="' + embedUrl + '" allowfullscreen loading="lazy" title="Mappa hotel"></iframe>';
+      html += '<a class="map-btn" href="https://maps.google.com/?q=' + mapsQuery + '" target="_blank" style="margin-top:10px;">🧭 Apri in Google Maps</a>';
+      html += '</div>';
+      return html;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // WHATSAPP CONTATTO
+    // ════════════════════════════════════════════════════════════
+    function buildWAButton(az) {
+      if (!az.telefono) return "";
+      var tel = az.telefono.replace(/\D/g, "");
+      var testo = encodeURIComponent("Ciao! Ho una prenotazione presso " + (az.nome || "il vostro hotel") + " e ho bisogno di assistenza.");
+      return '<a class="wa-btn" href="https://wa.me/' + tel + '?text=' + testo + '" target="_blank">💬 Scrivi su WhatsApp</a>';
     }
 
     // ════════════════════════════════════════════════════════════
