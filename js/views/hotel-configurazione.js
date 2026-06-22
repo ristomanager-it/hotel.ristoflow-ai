@@ -987,6 +987,7 @@ function buildTerritorioPayload(container) {
         tipo: row.querySelector(".rist-tipo")?.value?.trim() || "",
         distanza: row.querySelector(".rist-distanza")?.value?.trim() || "",
         prezzo: row.querySelector(".rist-prezzo")?.value || "€€",
+        link: row.querySelector(".rist-link")?.value?.trim() || "",
       });
     });
 
@@ -1030,11 +1031,29 @@ async function renderTerritorio(box, c, az) {
       <!-- GALLERIA FOTO -->
       <div class="card">
         <div class="card-title">📸 Galleria foto hotel</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">URL delle foto da mostrare sulla pagina prenotazione (una per riga)</div>
-        <textarea id="cfg-gallery-territorio" class="input" rows="6" placeholder="https://esempio.com/foto1.jpg&#10;https://esempio.com/foto2.jpg">${esc(fotoGalleria)}</textarea>
-        <div id="terr-gallery-preview" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;">
-          ${(azData?.foto_galleria||[]).map(url => `<img src="${url}" style="width:100%;height:60px;object-fit:cover;border-radius:6px;" onerror="this.style.display='none'">`).join("")}
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Carica le foto che verranno mostrate sulla pagina di prenotazione</div>
+
+        <!-- Upload area -->
+        <div id="terr-upload-area" style="border:2px dashed #d1d5db;border-radius:12px;padding:24px;text-align:center;cursor:pointer;background:#fafafa;margin-bottom:12px;"
+          onclick="document.getElementById('terr-foto-input').click()">
+          <div style="font-size:28px;margin-bottom:6px;">📁</div>
+          <div style="font-size:13px;font-weight:700;color:#374151;">Clicca per caricare foto</div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:4px;">JPG, PNG, WebP — max 5MB per foto</div>
+          <input type="file" id="terr-foto-input" accept="image/*" multiple style="display:none">
         </div>
+
+        <!-- Hidden textarea per URLs (usato dal payload) -->
+        <textarea id="cfg-gallery-territorio" style="display:none">${esc(fotoGalleria)}</textarea>
+
+        <!-- Griglia foto caricate -->
+        <div id="terr-gallery-preview" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          ${(azData?.foto_galleria||[]).map((url,i) => `
+            <div style="position:relative;border-radius:8px;overflow:hidden;">
+              <img src="${url}" style="width:100%;height:80px;object-fit:cover;display:block;" onerror="this.parentElement.remove()">
+              <button onclick="rimuoviFoto(this,'${url}')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+            </div>`).join("")}
+        </div>
+        <div id="terr-upload-status" style="font-size:12px;color:#6b7280;margin-top:8px;"></div>
       </div>
 
       <!-- ATTRAZIONI -->
@@ -1129,6 +1148,58 @@ async function renderTerritorio(box, c, az) {
 
   bindRemove(box.querySelector("#attrazioni-list"));
   bindRemove(box.querySelector("#ristoranti-list"));
+
+  // ── Upload foto galleria ──
+  var fotoUrls = (azData?.foto_galleria || []).slice();
+
+  window.rimuoviFoto = function(btn, url) {
+    fotoUrls = fotoUrls.filter(u => u !== url);
+    btn.closest("div").remove();
+    updateGalleryTA();
+  };
+
+  function updateGalleryTA() {
+    var ta = box.querySelector("#cfg-gallery-territorio");
+    if (ta) ta.value = fotoUrls.join("\n");
+  }
+
+  var input = box.querySelector("#terr-foto-input");
+  var status = box.querySelector("#terr-upload-status");
+  var preview = box.querySelector("#terr-gallery-preview");
+  var uploadArea = box.querySelector("#terr-upload-area");
+
+  if (input) {
+    input.addEventListener("change", async function() {
+      var files = Array.from(input.files);
+      if (!files.length) return;
+      status.textContent = "Caricamento " + files.length + " foto...";
+      uploadArea.style.opacity = "0.5";
+
+      for (var f of files) {
+        try {
+          var ext = f.name.split(".").pop().toLowerCase();
+          var fname = "hotel-galleria/" + az.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2) + "." + ext;
+          var { error } = await supabase.storage.from("hotel-media").upload(fname, f, { upsert: true });
+          if (error) throw error;
+          var { data: pub } = supabase.storage.from("hotel-media").getPublicUrl(fname);
+          var url = pub.publicUrl;
+          fotoUrls.push(url);
+          // Aggiungi preview
+          var div = document.createElement("div");
+          div.style.cssText = "position:relative;border-radius:8px;overflow:hidden;";
+          div.innerHTML = `<img src="${url}" style="width:100%;height:80px;object-fit:cover;display:block;">
+            <button onclick="rimuoviFoto(this,'${url}')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer;">✕</button>`;
+          preview.appendChild(div);
+        } catch(err) {
+          console.error("Upload error:", err);
+        }
+      }
+      updateGalleryTA();
+      status.textContent = fotoUrls.length + " foto nella galleria";
+      uploadArea.style.opacity = "1";
+      input.value = "";
+    });
+  }
 }
 
 function renderAttrazioneRow(a, i) {
@@ -1155,12 +1226,13 @@ function renderRistoranteRow(r, i) {
       <div style="font-size:12px;font-weight:700;color:var(--muted);">Ristorante ${i+1}</div>
       <button class="btn btn-ghost btn-sm btn-remove" style="color:#e53e3e;padding:2px 8px;">🗑</button>
     </div>
-    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 80px;gap:8px;">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 80px;gap:8px;margin-bottom:8px;">
       <input class="input rist-nome" placeholder="Nome *" value="${esc(r.nome||"")}">
       <input class="input rist-tipo" placeholder="Tipo cucina" value="${esc(r.tipo||"")}">
       <input class="input rist-distanza" placeholder="Distanza" value="${esc(r.distanza||"")}">
       <select class="input rist-prezzo">${prezzi.map(p=>`<option value="${p}" ${(r.prezzo||"€€")===p?"selected":""}>${p}</option>`).join("")}</select>
     </div>
+    <input class="input rist-link" placeholder="🔗 Link prenotazione (es. https://ristoflow-ai.com/p/TOKEN o OpenTable...)" value="${esc(r.link||"")}" style="width:100%;box-sizing:border-box;">
   </div>`;
 }
 
