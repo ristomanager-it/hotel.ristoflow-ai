@@ -261,7 +261,7 @@
       if (aziendaIdPren) {
         var cfgRes = await supa
           .from("hotel_configurazione")
-          .select("nome_pubblico, ora_checkin_default, ora_checkout_default, servizi_evidenza, link_google_recensione, messaggio_benvenuto, descrizione_pubblica, foto_gallery")
+          .select("nome_pubblico, ora_checkin_default, ora_checkout_default, servizi_evidenza, link_google_recensione, messaggio_benvenuto, descrizione_pubblica")
           .eq("azienda_id", aziendaIdPren)
           .maybeSingle();
         hotelCfg = cfgRes.data || {};
@@ -678,14 +678,13 @@
     // ════════════════════════════════════════════════════════════
     function buildMapsEmbed(indirizzo, mapsQuery, territorio) {
       if (!indirizzo && !mapsQuery) return "";
-      var t = territorio || {};
+      var t = (typeof territorio === "string" ? tryParseJSON(territorio) : territorio) || {};
       var arr = t.come_arrivare || {};
       var mapsLink = arr.maps_url || ('https://maps.google.com/?q=' + mapsQuery);
-      var embedUrl = "https://maps.google.com/maps?q=" + encodeURIComponent(indirizzo || '') + "&output=embed&z=15";
       var html = '<div class="section-card">';
       html += '<div class="section-title">🗺️ Come raggiungerci</div>';
-      html += '<iframe class="maps-embed" src="' + embedUrl + '" allowfullscreen loading="lazy" title="Mappa hotel"></iframe>';
-      html += '<a class="map-btn" href="' + escHtml(mapsLink) + '" target="_blank" style="margin-top:10px;">🧭 Apri in Google Maps</a>';
+      if (indirizzo) html += '<div style="font-size:13px;color:#6b7280;font-weight:600;margin-bottom:12px;">📍 ' + escHtml(indirizzo) + '</div>';
+      html += '<a class="map-btn" href="' + escHtml(mapsLink) + '" target="_blank">🧭 Apri in Google Maps</a>';
       html += '</div>';
       return html;
     }
