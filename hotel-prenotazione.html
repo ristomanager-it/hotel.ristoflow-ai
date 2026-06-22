@@ -768,7 +768,7 @@
       var res = await supa.from("hotel_prenotazioni").update({
         data_checkin: checkin,
         data_checkout: checkout,
-        ospiti: ospiti,
+        adulti: ospiti,
         richieste_speciali: note,
         modificata_dal_cliente: true,
         modificata_il: new Date().toISOString()
