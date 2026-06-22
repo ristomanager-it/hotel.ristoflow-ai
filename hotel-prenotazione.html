@@ -382,7 +382,7 @@
       html += buildServizi(cfg, null);
 
       // MAPPA EMBED
-      html += buildMapsEmbed(indirizzo, mapsQuery);
+      html += buildMapsEmbed(indirizzo, mapsQuery, az.territorio);
 
       // TERRITORIO
       if (az.territorio || p.info_territorio) {
@@ -676,13 +676,16 @@
     // ════════════════════════════════════════════════════════════
     // MAPPA GOOGLE EMBED
     // ════════════════════════════════════════════════════════════
-    function buildMapsEmbed(indirizzo, mapsQuery) {
-      if (!indirizzo) return "";
-      var embedUrl = "https://maps.google.com/maps?q=" + encodeURIComponent(indirizzo) + "&output=embed&z=15";
+    function buildMapsEmbed(indirizzo, mapsQuery, territorio) {
+      if (!indirizzo && !mapsQuery) return "";
+      var t = territorio || {};
+      var arr = t.come_arrivare || {};
+      var mapsLink = arr.maps_url || ('https://maps.google.com/?q=' + mapsQuery);
+      var embedUrl = "https://maps.google.com/maps?q=" + encodeURIComponent(indirizzo || '') + "&output=embed&z=15";
       var html = '<div class="section-card">';
       html += '<div class="section-title">🗺️ Come raggiungerci</div>';
       html += '<iframe class="maps-embed" src="' + embedUrl + '" allowfullscreen loading="lazy" title="Mappa hotel"></iframe>';
-      html += '<a class="map-btn" href="https://maps.google.com/?q=' + mapsQuery + '" target="_blank" style="margin-top:10px;">🧭 Apri in Google Maps</a>';
+      html += '<a class="map-btn" href="' + escHtml(mapsLink) + '" target="_blank" style="margin-top:10px;">🧭 Apri in Google Maps</a>';
       html += '</div>';
       return html;
     }
