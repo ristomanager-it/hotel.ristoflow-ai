@@ -13,6 +13,9 @@ const TEMPLATE_DEFAULTS = {
   reminder_wa: `Gentile {nome},\n\nDomani ci vediamo! 🏨\n\nRicordiamo che il suo check-in è previsto per {checkin} alle ore {ora_checkin}.\n\nSe vuole velocizzare l'arrivo completi il check-in online:\n{link_checkin}\n\nA domani! 👋`,
   checkin_wa: `Gentile {nome},\n\nPuò completare il check-in online in anticipo:\n\n👇 {link_checkin}\n\nBasterà inserire i dati del documento. L'arrivo sarà più rapido! 🙏`,
   poststay_wa: `Gentile {nome},\n\nSperiamo che il suo soggiorno da noi sia stato piacevole! 😊\n\nSe ha un momento, una recensione ci aiuterebbe moltissimo:\n🌟 {link_recensione}\n\nGrazie di cuore e speriamo di rivederla presto! 🏨`,
+  reminder_checkout_wa: `Buonasera {nome}! 🌙\n\nDomani sarà il suo ultimo giorno a {hotel}.\n\n🕙 Check-out entro le {ora_checkout}\n\nPer qualsiasi esigenza siamo a disposizione.\n\nSperiamo che il soggiorno sia stato piacevole! 🙏`,
+  benvenuto_arrivo_wa: `Benvenuto a {hotel}, {nome}! 🏨\n\nLa sua camera {camera} è pronta.\n\n☕ Colazione: 07:00 – 10:30\n🕙 Check-out: ore {ora_checkout}\n\nPer qualsiasi esigenza risponda a questo messaggio.\n\nBuon soggiorno! 🙏`,
+  post_checkout_email: `Gentile {nome},\n\nGrazie per aver scelto {hotel}!\n\nSperiamo che il suo soggiorno di {notti} notti sia stato all'altezza delle aspettative.\n\n⭐ Se ha un momento, le chiediamo un piccolo favore:\n\n1. Lasci una recensione su Google (vale oro per noi!):\n{link_recensione_google}\n\n2. Condivida la sua esperienza sulla nostra community:\n{link_ristoflowbook}\n\nGrazie di cuore e speriamo di rivederla presto!\n\n{hotel}`,
 };
 
 const TABS = [
@@ -467,12 +470,43 @@ function renderTemplate(box, c) {
         <label>Invia quanti giorni dopo il check-out</label>
         <input id="cfg-poststay-giorni" class="input" type="number" min="1" max="7" value="${c.poststay_giorni_dopo || 1}" style="max-width:100px;">
       </div>` },
+    { id:"reminder_checkout", label:"🌙 Reminder check-out (sera prima)", field:"template_reminder_checkout_wa", toggle:"attiva_reminder_checkout_auto", default: TEMPLATE_DEFAULTS.reminder_checkout_wa },
+    { id:"benvenuto_arrivo", label:"🏨 Benvenuto arrivo", field:"template_benvenuto_arrivo_wa", toggle:"attiva_benvenuto_arrivo_auto", default: TEMPLATE_DEFAULTS.benvenuto_arrivo_wa },
   ];
 
   box.innerHTML = `
     <div style="background:#EBF5FB;border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;">
       <strong>📌 Variabili disponibili:</strong><br>
-      <code style="font-size:11px;">${VARS}</code>
+      <code style="font-size:11px;">${VARS} {link_recensione_google} {link_tripadvisor} {link_ristoflowbook}</code>
+    </div>
+
+    <!-- SEZIONE LINK RECENSIONI -->
+    <div class="card" style="margin-bottom:20px;border-left:4px solid #f59e0b;">
+      <div class="card-title">⭐ Link recensioni</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5;">
+        Configura i link per le recensioni. Verranno usati automaticamente nei messaggi post-checkout
+        e sostituiti nelle variabili <code>{link_recensione_google}</code>, <code>{link_tripadvisor}</code>, <code>{link_ristoflowbook}</code>.
+      </p>
+      <div style="display:grid;gap:14px;">
+        <div class="form-group">
+          <label>🔍 Google Reviews</label>
+          <input id="cfg-link-google" class="input" type="url" value="${esc(c.link_google_recensione || '')}" placeholder="https://g.page/r/...">
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">Vai su Google Maps → Il tuo profilo → Chiedi recensioni → Ottieni link</div>
+        </div>
+        <div class="form-group">
+          <label>🦉 TripAdvisor</label>
+          <input id="cfg-link-tripadvisor" class="input" type="url" value="${esc(c.link_tripadvisor || '')}" placeholder="https://www.tripadvisor.it/...">
+        </div>
+        <div class="form-group">
+          <label>📱 RistoflowBook (portale community)</label>
+          <input id="cfg-link-ristoflowbook" class="input" type="url" value="${esc(c.link_ristoflowbook || 'https://social.ristoflow-ai.com/recensione?az=${az?.id || ''}&tipo=hotel')}" placeholder="https://social.ristoflow-ai.com/recensione?az=...">
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">Portale recensioni interno — costruisce community e raccoglie dati clienti</div>
+        </div>
+        <div style="background:#fef3c7;border-radius:10px;padding:12px;font-size:13px;color:#92400e;">
+          <strong>💡 Strategia consigliata:</strong> Nel messaggio post-checkout chiedi prima Google (vale per la classifica),
+          poi proponi RistoflowBook per costruire la community. TripAdvisor è opzionale ma utile per i viaggiatori stranieri.
+        </div>
+      </div>
     </div>
 
     ${templates.map(t => `
@@ -509,12 +543,15 @@ function renderTemplate(box, c) {
     const aggiorna = () => {
       prev.textContent = ta.value
         .replace(/{nome}/g, "Mario").replace(/{cognome}/g, "Rossi")
-        .replace(/{hotel}/g, "Hotel Campo Antico").replace(/{camera}/g, "Suite 101")
+        .replace(/{hotel}/g, c.nome_pubblico || "Hotel Campo Antico").replace(/{camera}/g, "Suite 101")
         .replace(/{checkin}/g, "15/07/2025").replace(/{checkout}/g, "18/07/2025")
-        .replace(/{ora_checkin}/g, "14:00").replace(/{ora_checkout}/g, "11:00")
+        .replace(/{ora_checkin}/g, c.ora_checkin_default || "14:00").replace(/{ora_checkout}/g, c.ora_checkout_default || "11:00")
         .replace(/{notti}/g, "3").replace(/{totale}/g, "450.00")
-        .replace(/{link_checkin}/g, "https://hotel.ristoflow-ai.com/public/checkin.html?token=...")
-        .replace(/{link_recensione}/g, "https://g.page/...");
+        .replace(/{link_checkin}/g, "https://hotel.ristoflow-ai.com/hotel-prenotazione.html?t=...")
+        .replace(/{link_recensione}/g, c.link_google_recensione || "https://g.page/r/...")
+        .replace(/{link_recensione_google}/g, c.link_google_recensione || "https://g.page/r/...")
+        .replace(/{link_tripadvisor}/g, c.link_tripadvisor || "https://tripadvisor.it/...")
+        .replace(/{link_ristoflowbook}/g, c.link_ristoflowbook || "https://social.ristoflow-ai.com/recensione?az=...");
     };
     ta.oninput = aggiorna;
     aggiorna();
@@ -735,8 +772,16 @@ async function salvaConfigurazione(aziendaId, container) {
     attiva_reminder_auto: getCheck("cfg-attiva_reminder_auto"),
     attiva_checkin_auto:  getCheck("cfg-attiva_checkin_auto"),
     attiva_poststay_auto: getCheck("cfg-attiva_poststay_auto"),
+    attiva_reminder_checkout_auto: getCheck("cfg-attiva_reminder_checkout_auto"),
+    attiva_benvenuto_arrivo_auto:  getCheck("cfg-attiva_benvenuto_arrivo_auto"),
     reminder_giorni_prima: parseInt(get("cfg-reminder-giorni")) || 1,
     poststay_giorni_dopo:  parseInt(get("cfg-poststay-giorni")) || 1,
+    template_reminder_checkout_wa: getTA("cfg-template_reminder_checkout_wa"),
+    template_benvenuto_arrivo_wa:  getTA("cfg-template_benvenuto_arrivo_wa"),
+    // Link recensioni
+    link_google_recensione: get("cfg-link-google"),
+    link_tripadvisor:       get("cfg-link-tripadvisor"),
+    link_ristoflowbook:     get("cfg-link-ristoflowbook"),
     // Chatbot
     chatbot_attivo:              getCheck("cfg-chatbot-attivo"),
     chatbot_messaggio_benvenuto: getTA("cfg-chat-benvenuto"),
