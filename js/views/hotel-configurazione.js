@@ -99,7 +99,7 @@ function renderTab(id, c, az, container) {
     case "stile":    renderStile(box, c); break;
     case "booking":  renderBooking(box, c); break;
     case "pubblica": renderPubblica(box, c, az); break;
-    case "template": renderTemplate(box, c); break;
+    case "template": renderTemplate(box, c, az); break;
     case "chatbot":  renderChatbot(box, c, az); break;
     case "form":     renderForm(box, c); break;
   }
@@ -336,8 +336,9 @@ function renderBooking(box, c) {
             <input id="cfg-min-notti" class="input" type="number" min="1" value="${c.min_notti || 1}">
           </div>
           <div class="form-group">
-            <label>Ospiti max default</label>
-            <input id="cfg-max-ospiti" class="input" type="number" min="1" value="${c.max_ospiti_default || 4}">
+            <label>Ospiti max accettati</label>
+            <input id="cfg-max-ospiti" class="input" type="number" min="1" value="${c.max_ospiti_default || 20}">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Nessun limite rigido — il cliente inserisce il numero e l'admin gestisce l'assegnazione camere manualmente</div>
           </div>
         </div>
         <div class="form-group">
@@ -413,9 +414,102 @@ function renderPubblica(box, c, az) {
 
         <!-- Preview pagina -->
         <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-          <button class="btn btn-primary" onclick="window.open('${linkBooking}','_blank')">
-            👁 Anteprima pagina pubblica
-          </button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="window.open('${linkBooking}','_blank')">
+              👁 Apri pagina pubblica
+            </button>
+            <button class="btn btn-ghost" id="btn-toggle-mockup">
+              📱 Mostra mockup mobile
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOCKUP MOBILE -->
+    <div id="mockup-mobile" style="display:none;margin-top:20px;">
+      <div class="card">
+        <div class="card-title">📱 Anteprima mobile</div>
+        <div style="display:flex;justify-content:center;padding:20px 0;">
+          <div style="width:375px;background:#f0f6fa;border-radius:40px;border:8px solid #1a1a1a;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);position:relative;">
+            <!-- Notch -->
+            <div style="background:#1a1a1a;height:28px;display:flex;align-items:center;justify-content:center;">
+              <div style="width:80px;height:10px;background:#333;border-radius:10px;"></div>
+            </div>
+            <!-- Schermo -->
+            <div style="height:600px;overflow-y:auto;background:#f0f6fa;">
+              <!-- Hero cover -->
+              <div style="height:160px;background:linear-gradient(135deg,var(--primary,#1B4F72),#2471A3);position:relative;display:flex;align-items:flex-end;">
+                <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(0,0,0,.2));"></div>
+              </div>
+              <!-- Logo e nome -->
+              <div style="background:white;padding:0 16px 14px;display:flex;gap:12px;align-items:flex-end;margin-top:-30px;position:relative;">
+                <div style="width:60px;height:60px;border-radius:50%;border:3px solid white;background:#EBF5FB;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;font-size:20px;">🏨</div>
+                <div style="padding-bottom:4px;">
+                  <div style="font-size:14px;font-weight:800;color:#111;">\${c.nome_pubblico || az.nome || 'Il tuo hotel'}</div>
+                  <div style="font-size:11px;color:#1B4F72;font-weight:600;">Prenotazione hotel</div>
+                </div>
+              </div>
+              <!-- Card info -->
+              <div style="margin:8px 12px;background:white;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);">
+                <div style="font-size:10px;font-weight:800;color:#1B4F72;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Prenotazione per</div>
+                <div style="font-size:18px;font-weight:800;color:#111;margin-bottom:10px;">Mario Rossi</div>
+                <div style="display:inline-flex;align-items:center;gap:6px;background:#DCFCE7;color:#166534;border-radius:999px;padding:4px 12px;font-size:11px;font-weight:800;margin-bottom:12px;">🟢 Confermata</div>
+                <div style="display:inline-flex;align-items:center;gap:6px;background:#EBF5FB;color:#1B4F72;border-radius:999px;padding:4px 12px;font-size:11px;font-weight:800;margin-left:6px;margin-bottom:12px;">🛏️ Camera Standard</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <div style="background:#EBF5FB;border-radius:10px;padding:10px;">
+                    <div style="font-size:16px;margin-bottom:2px;">📅</div>
+                    <div style="font-size:9px;font-weight:800;color:#1B4F72;text-transform:uppercase;">Check-in</div>
+                    <div style="font-size:13px;font-weight:800;color:#111;">\${c.ora_checkin_default || '14:00'}</div>
+                  </div>
+                  <div style="background:#EBF5FB;border-radius:10px;padding:10px;">
+                    <div style="font-size:16px;margin-bottom:2px;">📆</div>
+                    <div style="font-size:9px;font-weight:800;color:#1B4F72;text-transform:uppercase;">Check-out</div>
+                    <div style="font-size:13px;font-weight:800;color:#111;">\${c.ora_checkout_default || '11:00'}</div>
+                  </div>
+                  <div style="background:#EBF5FB;border-radius:10px;padding:10px;">
+                    <div style="font-size:16px;margin-bottom:2px;">🌙</div>
+                    <div style="font-size:9px;font-weight:800;color:#1B4F72;text-transform:uppercase;">Notti</div>
+                    <div style="font-size:13px;font-weight:800;color:#111;">3</div>
+                  </div>
+                  <div style="background:#EBF5FB;border-radius:10px;padding:10px;">
+                    <div style="font-size:16px;margin-bottom:2px;">👥</div>
+                    <div style="font-size:9px;font-weight:800;color:#1B4F72;text-transform:uppercase;">Ospiti</div>
+                    <div style="font-size:13px;font-weight:800;color:#111;">2</div>
+                  </div>
+                </div>
+              </div>
+              <!-- Totale -->
+              <div style="margin:8px 12px;background:white;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);">
+                <div style="font-size:10px;font-weight:800;color:#1B4F72;text-transform:uppercase;">Totale soggiorno</div>
+                <div style="font-size:22px;font-weight:800;color:#111;margin-top:4px;">€ 450,00</div>
+              </div>
+              <!-- Azioni -->
+              <div style="margin:8px 12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div style="background:#059669;border-radius:12px;padding:12px;text-align:center;">
+                  <div style="font-size:18px;">✅</div>
+                  <div style="font-size:11px;font-weight:800;color:white;margin-top:4px;">Check-in online</div>
+                </div>
+                <div style="background:#1B4F72;border-radius:12px;padding:12px;text-align:center;">
+                  <div style="font-size:18px;">✏️</div>
+                  <div style="font-size:11px;font-weight:800;color:white;margin-top:4px;">Modifica</div>
+                </div>
+              </div>
+              <!-- Info hotel -->
+              <div style="margin:8px 12px 20px;background:white;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);">
+                <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:10px;">🏨 L'hotel</div>
+                \${az.telefono ? '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;"><div style="width:32px;height:32px;border-radius:10px;background:#EBF5FB;display:flex;align-items:center;justify-content:center;font-size:14px;">📞</div><div style="font-size:12px;color:#111;font-weight:600;">' + az.telefono + '</div></div>' : ''}
+                \${az.indirizzo ? '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;"><div style="width:32px;height:32px;border-radius:10px;background:#EBF5FB;display:flex;align-items:center;justify-content:center;font-size:14px;">📍</div><div style="font-size:12px;color:#111;font-weight:600;">' + az.indirizzo + '</div></div>' : ''}
+              </div>
+            </div>
+            <!-- Barra home iPhone -->
+            <div style="background:white;height:20px;display:flex;align-items:center;justify-content:center;">
+              <div style="width:100px;height:4px;background:#1a1a1a;border-radius:4px;"></div>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--muted);">
+          Anteprima della pagina <strong>hotel-prenotazione.html</strong> — quella che riceve l'ospite via WhatsApp/email dopo la prenotazione
         </div>
       </div>
     </div>
@@ -449,12 +543,23 @@ function renderPubblica(box, c, az) {
     w.document.write(`<html><body style="text-align:center;padding:40px;"><h2>Prenota online</h2><img src="${qrImg.src}" style="width:200px;"><p style="margin-top:12px;font-size:12px;">${linkBooking}</p></body></html>`);
     w.print();
   };
+
+  // Toggle mockup mobile
+  const btnMockup = box.querySelector("#btn-toggle-mockup");
+  const mockupDiv = box.querySelector("#mockup-mobile");
+  if (btnMockup && mockupDiv) {
+    btnMockup.onclick = () => {
+      const visible = mockupDiv.style.display !== "none";
+      mockupDiv.style.display = visible ? "none" : "block";
+      btnMockup.textContent = visible ? "📱 Mostra mockup mobile" : "📱 Nascondi mockup";
+    };
+  }
 }
 
 /* ══════════════════════════════════════════════
    TAB 5 — TEMPLATE MESSAGGI
 ══════════════════════════════════════════════ */
-function renderTemplate(box, c) {
+function renderTemplate(box, c, az) {
   const VARS = "{nome} {cognome} {hotel} {camera} {checkin} {checkout} {ora_checkin} {ora_checkout} {notti} {totale} {link_checkin} {link_recensione}";
 
   const templates = [
@@ -598,15 +703,13 @@ function renderChatbot(box, c, az) {
           </div>
         </div>
 
-        <!-- WEBHOOK URL -->
+        <!-- INFO WHATSAPP -->
         <div class="card">
-          <div class="card-title">🔗 Configurazione Webhook Meta</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Incolla questo URL nel pannello Meta Business → WhatsApp → Webhook:</div>
-          <div style="background:#0f172a;border-radius:8px;padding:10px 14px;font-family:monospace;font-size:11px;color:#86efac;word-break:break-all;margin-bottom:8px;">
-            ${webhookUrl}
+          <div class="card-title">📱 Connessione WhatsApp</div>
+          <div style="background:#f0fdf4;border-radius:10px;padding:12px;font-size:12px;color:#15803d;">
+            ✅ La connessione WhatsApp è gestita centralmente dalla piattaforma Ristoflow.<br>
+            Per modificare il numero o le credenziali vai su <strong>Ristoflow → Gestione Aziende</strong>.
           </div>
-          <div style="font-size:12px;color:var(--muted);">Verify Token: <strong>ristoflow_hotel_2026</strong></div>
-          <div style="font-size:12px;color:var(--muted);margin-top:6px;">Campi da sottoscrivere: <strong>messages</strong></div>
         </div>
       </div>
 
