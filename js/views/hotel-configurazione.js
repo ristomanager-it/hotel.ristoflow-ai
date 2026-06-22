@@ -26,6 +26,7 @@ const TABS = [
   { id: "template",  icon: "💬", label: "Template msg" },
   { id: "chatbot",   icon: "🤖", label: "Chatbot" },
   { id: "form",      icon: "📝", label: "Form" },
+  { id: "territorio", icon: "🌍", label: "Territorio" },
 ];
 
 export async function render(container) {
@@ -102,6 +103,7 @@ function renderTab(id, c, az, container) {
     case "template": renderTemplate(box, c, az); break;
     case "chatbot":  renderChatbot(box, c, az); break;
     case "form":     renderForm(box, c); break;
+    case "territorio": renderTerritorio(box, c, az); break;
   }
 }
 
@@ -920,7 +922,20 @@ async function salvaConfigurazione(aziendaId, container) {
     testo_privacy:             getTA("cfg-testo-privacy"),
     testo_conferma:            getTA("cfg-testo-conferma"),
     updated_at:                new Date().toISOString(),
+    // Territorio — salvato su aziende non su hotel_configurazione
   };
+
+  // Salva territorio su aziende separatamente
+  var territorioPayload = buildTerritorioPayload(container);
+  if (territorioPayload !== null) {
+    await supabase.from("aziende").update({ territorio: territorioPayload }).eq("id", aziendaId);
+  }
+  // Salva galleria su aziende
+  var galleriaStr = container.querySelector("#cfg-gallery-territorio")?.value || "";
+  var galleriaArr = galleriaStr.split("\n").map(u => u.trim()).filter(Boolean);
+  if (galleriaArr.length > 0) {
+    await supabase.from("aziende").update({ foto_galleria: galleriaArr }).eq("id", aziendaId);
+  }
 
   const { error } = await supabase
     .from("hotel_configurazione")
@@ -934,6 +949,226 @@ async function salvaConfigurazione(aziendaId, container) {
     suc.textContent = "✅ Configurazione salvata!";
     setTimeout(() => suc.textContent = "", 3000);
   }
+}
+
+// ── Helper buildTerritorioPayload ──
+function buildTerritorioPayload(container) {
+  try {
+    var desc = container.querySelector("#terr-descrizione")?.value?.trim() || "";
+    var park = container.querySelector("#terr-parcheggio")?.value?.trim() || "";
+    var parkGrat = container.querySelector("#terr-parcheggio-gratuito")?.checked ?? true;
+    var autoTxt = container.querySelector("#terr-auto")?.value?.trim() || "";
+    var trenoTxt = container.querySelector("#terr-treno")?.value?.trim() || "";
+    var aereoTxt = container.querySelector("#terr-aereo")?.value?.trim() || "";
+    var busTxt = container.querySelector("#terr-bus")?.value?.trim() || "";
+
+    // Attrazioni
+    var attrazioni = [];
+    container.querySelectorAll(".attr-row").forEach(function(row) {
+      var nome = row.querySelector(".attr-nome")?.value?.trim();
+      if (!nome) return;
+      attrazioni.push({
+        nome: nome,
+        distanza: row.querySelector(".attr-distanza")?.value?.trim() || "",
+        tempo: row.querySelector(".attr-tempo")?.value?.trim() || "",
+        icona: row.querySelector(".attr-icona")?.value?.trim() || "📍",
+        descrizione: row.querySelector(".attr-desc")?.value?.trim() || "",
+        link: row.querySelector(".attr-link")?.value?.trim() || "",
+      });
+    });
+
+    // Ristoranti
+    var ristoranti = [];
+    container.querySelectorAll(".rist-row").forEach(function(row) {
+      var nome = row.querySelector(".rist-nome")?.value?.trim();
+      if (!nome) return;
+      ristoranti.push({
+        nome: nome,
+        tipo: row.querySelector(".rist-tipo")?.value?.trim() || "",
+        distanza: row.querySelector(".rist-distanza")?.value?.trim() || "",
+        prezzo: row.querySelector(".rist-prezzo")?.value || "€€",
+      });
+    });
+
+    return {
+      descrizione: desc,
+      attrazioni: attrazioni,
+      come_arrivare: {
+        auto: autoTxt, treno: trenoTxt, aereo: aereoTxt, bus: busTxt
+      },
+      parcheggio: park ? { descrizione: park, gratuito: parkGrat } : null,
+      ristoranti: ristoranti,
+    };
+  } catch(e) { return null; }
+}
+
+/* ══════════════════════════════════════════════
+   TAB 8 — TERRITORIO & CONTENUTI
+══════════════════════════════════════════════ */
+async function renderTerritorio(box, c, az) {
+  // Carica territorio attuale da aziende
+  const { data: azData } = await supabase.from("aziende").select("territorio, foto_galleria").eq("id", az.id).maybeSingle();
+  const t = azData?.territorio || {};
+  const fotoGalleria = (azData?.foto_galleria || []).join("\n");
+  const arrivare = t.come_arrivare || {};
+  const park = t.parcheggio || {};
+  const attrazioni = t.attrazioni || [];
+  const ristoranti = t.ristoranti || [];
+
+  box.innerHTML = `
+    <div style="display:grid;gap:16px;">
+
+      <!-- DESCRIZIONE -->
+      <div class="card">
+        <div class="card-title">📝 Descrizione pubblica hotel</div>
+        <div class="form-group">
+          <label>Testo mostrato sulla pagina prenotazione</label>
+          <textarea id="terr-descrizione" class="input" rows="4" placeholder="Immerso nella campagna viterbese, a pochi km dal centro storico...">${esc(t.descrizione || "")}</textarea>
+        </div>
+      </div>
+
+      <!-- GALLERIA FOTO -->
+      <div class="card">
+        <div class="card-title">📸 Galleria foto hotel</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">URL delle foto da mostrare sulla pagina prenotazione (una per riga)</div>
+        <textarea id="cfg-gallery-territorio" class="input" rows="6" placeholder="https://esempio.com/foto1.jpg&#10;https://esempio.com/foto2.jpg">${esc(fotoGalleria)}</textarea>
+        <div id="terr-gallery-preview" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;">
+          ${(azData?.foto_galleria||[]).map(url => `<img src="${url}" style="width:100%;height:60px;object-fit:cover;border-radius:6px;" onerror="this.style.display='none'">`).join("")}
+        </div>
+      </div>
+
+      <!-- ATTRAZIONI -->
+      <div class="card">
+        <div class="card-title">🏛️ Attrazioni e punti di interesse</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Cosa vedere e fare nei dintorni dell'hotel</div>
+        <div id="attrazioni-list">
+          ${attrazioni.map((a, i) => renderAttrazioneRow(a, i)).join("")}
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-add-attr" style="margin-top:8px;">+ Aggiungi attrazione</button>
+      </div>
+
+      <!-- COME ARRIVARE -->
+      <div class="card">
+        <div class="card-title">🚗 Come arrivare</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label>🚗 In auto</label>
+            <textarea id="terr-auto" class="input" rows="3" placeholder="A1 uscita Orte, poi SS204 direzione centro...">${esc(arrivare.auto || "")}</textarea>
+          </div>
+          <div class="form-group">
+            <label>🚂 In treno</label>
+            <textarea id="terr-treno" class="input" rows="3" placeholder="Stazione Orte (FR1 Roma-Firenze)...">${esc(arrivare.treno || "")}</textarea>
+          </div>
+          <div class="form-group">
+            <label>✈️ In aereo</label>
+            <textarea id="terr-aereo" class="input" rows="3" placeholder="Roma Fiumicino 80 km...">${esc(arrivare.aereo || "")}</textarea>
+          </div>
+          <div class="form-group">
+            <label>🚌 In autobus</label>
+            <textarea id="terr-bus" class="input" rows="3" placeholder="Bus navetta dalla stazione...">${esc(arrivare.bus || "")}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- PARCHEGGIO -->
+      <div class="card">
+        <div class="card-title">🅿️ Parcheggio</div>
+        <div class="form-group">
+          <label>Descrizione</label>
+          <input id="terr-parcheggio" class="input" value="${esc(park.descrizione || "")}" placeholder="Parcheggio privato in struttura, 20 posti disponibili">
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+          <input type="checkbox" id="terr-parcheggio-gratuito" ${park.gratuito !== false ? "checked" : ""}> Gratuito
+        </label>
+      </div>
+
+      <!-- RISTORANTI -->
+      <div class="card">
+        <div class="card-title">🍽️ Ristoranti consigliati</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">I migliori posti dove mangiare nei dintorni</div>
+        <div id="ristoranti-list">
+          ${ristoranti.map((r, i) => renderRistoranteRow(r, i)).join("")}
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-add-rist" style="margin-top:8px;">+ Aggiungi ristorante</button>
+      </div>
+
+    </div>
+  `;
+
+  // Gallery preview live
+  const gallTA = box.querySelector("#cfg-gallery-territorio");
+  const gallPrev = box.querySelector("#terr-gallery-preview");
+  if (gallTA && gallPrev) {
+    gallTA.oninput = () => {
+      const urls = gallTA.value.split("\n").filter(u => u.trim());
+      gallPrev.innerHTML = urls.map(url =>
+        `<img src="${url.trim()}" style="width:100%;height:60px;object-fit:cover;border-radius:6px;" onerror="this.style.display='none'">`
+      ).join("");
+    };
+  }
+
+  // Add attrazione
+  box.querySelector("#btn-add-attr").onclick = () => {
+    const list = box.querySelector("#attrazioni-list");
+    const idx = list.querySelectorAll(".attr-row").length;
+    const div = document.createElement("div");
+    div.innerHTML = renderAttrazioneRow({}, idx);
+    list.appendChild(div.firstElementChild);
+    bindRemove(list);
+  };
+
+  // Add ristorante
+  box.querySelector("#btn-add-rist").onclick = () => {
+    const list = box.querySelector("#ristoranti-list");
+    const idx = list.querySelectorAll(".rist-row").length;
+    const div = document.createElement("div");
+    div.innerHTML = renderRistoranteRow({}, idx);
+    list.appendChild(div.firstElementChild);
+    bindRemove(list);
+  };
+
+  bindRemove(box.querySelector("#attrazioni-list"));
+  bindRemove(box.querySelector("#ristoranti-list"));
+}
+
+function renderAttrazioneRow(a, i) {
+  return `<div class="attr-row" style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid var(--border);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);">Attrazione ${i+1}</div>
+      <button class="btn btn-ghost btn-sm btn-remove" style="color:#e53e3e;padding:2px 8px;">🗑</button>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 80px;gap:8px;margin-bottom:8px;">
+      <input class="input attr-nome" placeholder="Nome *" value="${esc(a.nome||"")}">
+      <input class="input attr-distanza" placeholder="Distanza (es. 2 km)" value="${esc(a.distanza||"")}">
+      <input class="input attr-tempo" placeholder="Tempo (es. 5 min)" value="${esc(a.tempo||"")}">
+      <input class="input attr-icona" placeholder="🏛️" value="${esc(a.icona||"📍")}" style="text-align:center;">
+    </div>
+    <input class="input attr-desc" placeholder="Descrizione breve" value="${esc(a.descrizione||"")}" style="width:100%;margin-bottom:6px;box-sizing:border-box;">
+    <input class="input attr-link" placeholder="Link (opzionale)" value="${esc(a.link||"")}" style="width:100%;box-sizing:border-box;">
+  </div>`;
+}
+
+function renderRistoranteRow(r, i) {
+  const prezzi = ["€","€€","€€€","€€€€"];
+  return `<div class="rist-row" style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid var(--border);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);">Ristorante ${i+1}</div>
+      <button class="btn btn-ghost btn-sm btn-remove" style="color:#e53e3e;padding:2px 8px;">🗑</button>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 80px;gap:8px;">
+      <input class="input rist-nome" placeholder="Nome *" value="${esc(r.nome||"")}">
+      <input class="input rist-tipo" placeholder="Tipo cucina" value="${esc(r.tipo||"")}">
+      <input class="input rist-distanza" placeholder="Distanza" value="${esc(r.distanza||"")}">
+      <select class="input rist-prezzo">${prezzi.map(p=>`<option value="${p}" ${(r.prezzo||"€€")===p?"selected":""}>${p}</option>`).join("")}</select>
+    </div>
+  </div>`;
+}
+
+function bindRemove(list) {
+  if (!list) return;
+  list.querySelectorAll(".btn-remove").forEach(btn => {
+    btn.onclick = () => { btn.closest(".attr-row, .rist-row").remove(); };
+  });
 }
 
 // ── Helper ──
