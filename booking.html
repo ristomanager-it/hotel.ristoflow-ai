@@ -1,593 +1,636 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Prenota — Hotel</title>
-  <link rel="icon" href="logo hotel management1.png" type="image/png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Prenota il tuo soggiorno</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --brand: #0E5A7A; --brand-light: #e8f4f8; --radius: 16px; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f6fa; min-height: 100vh; color: #111827; }
-
-    /* HERO */
-    .hero { position: relative; height: 200px; background: linear-gradient(135deg, var(--brand), #1a7a9a); overflow: hidden; }
-    .hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .hero-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.5)); }
-    .hero-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; }
-    .hero-nome { font-size: 22px; font-weight: 800; color: #fff; }
-    .hero-sub { font-size: 13px; color: rgba(255,255,255,.85); margin-top: 3px; }
-
-    /* STEP INDICATOR */
-    .steps { display: flex; align-items: center; background: #fff; padding: 14px 16px; border-bottom: 1px solid #f3f4f6; gap: 6px; }
-    .step { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #9ca3af; }
-    .step.active { color: var(--brand); }
-    .step.done { color: #059669; }
-    .step-num { width: 24px; height: 24px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
-    .step.active .step-num { background: var(--brand); color: #fff; }
-    .step.done .step-num { background: #059669; color: #fff; }
-    .step-line { flex: 1; height: 2px; background: #f3f4f6; }
-    .step-line.done { background: #059669; }
-
-    /* SEZIONI */
-    .section { background: #fff; margin: 8px 12px; border-radius: var(--radius); padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
-    .section-title { font-size: 15px; font-weight: 800; color: #374151; margin-bottom: 14px; }
-
-    /* DATE PICKER */
-    .date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-    .date-box { background: var(--brand-light); border-radius: 12px; padding: 12px; cursor: pointer; border: 2px solid transparent; transition: border-color .15s; }
-    .date-box.selected { border-color: var(--brand); }
-    .date-box-label { font-size: 10px; font-weight: 800; color: var(--brand); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
-    .date-box-value { font-size: 16px; font-weight: 800; color: #111; }
-    .date-box-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
-    .date-input { width: 100%; height: 46px; border: 1.5px solid #e5e7eb; border-radius: 12px; padding: 0 14px; font-size: 15px; color: #111; background: #f9fafb; margin-bottom: 10px; }
-    .date-input:focus { outline: none; border-color: var(--brand); background: #fff; }
-
+    :root { --brand: #0E5A7A; --brand-light: #e8f4f8; --radius: 20px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f6fa; min-height: 100vh; color: #111827; }
+    .hero-social { background: #fff; margin-bottom: 0; }
+    .social-cover { position: relative; width: 100%; height: 200px; background: var(--brand); overflow: hidden; }
+    .social-cover-img { width:100%;height:100%;object-fit:cover;display:block; }
+    .social-cover-empty { width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px; }
+    .social-cover-overlay { position:absolute;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(0,0,0,0.25) 100%);pointer-events:none; }
+    .social-profile-row { display:flex;align-items:flex-end;gap:14px;padding:0 16px 14px;margin-top:-36px;position:relative;z-index:2; }
+    .social-logo-wrap { width:88px;height:88px;border-radius:50%;border:4px solid #fff;overflow:hidden;background:#e5e7eb;flex-shrink:0;box-shadow:0 2px 12px rgba(0,0,0,0.15); }
+    .social-logo-img { width:100%;height:100%;object-fit:cover;display:block; }
+    .social-logo-empty { width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:36px;background:var(--brand-light); }
+    .social-profile-info { padding-bottom:6px;flex:1;min-width:0; }
+    .social-nome { font-size:20px;font-weight:800;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .social-sub { font-size:14px;font-weight:700;color:var(--brand);margin-top:4px; }
+    /* STEPS */
+    .steps-bar { display:flex;align-items:center;background:#fff;padding:12px 16px;border-bottom:1px solid #f3f4f6;gap:4px; }
+    .step-item { display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#9ca3af; }
+    .step-item.active { color:var(--brand); }
+    .step-item.done { color:#059669; }
+    .step-num { width:22px;height:22px;border-radius:50%;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0; }
+    .step-item.active .step-num { background:var(--brand);color:#fff; }
+    .step-item.done .step-num { background:#059669;color:#fff; }
+    .step-line { flex:1;height:2px;background:#f3f4f6;min-width:8px; }
+    .step-line.done { background:#059669; }
+    /* SECTION */
+    .section-card { background:#fff;border-radius:18px;margin:0 12px 12px;padding:16px;box-shadow:0 4px 16px rgba(0,0,0,0.04); }
+    .section-title { font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;display:flex;align-items:center;gap:6px; }
+    /* DATE */
+    .date-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px; }
+    .date-box { background:var(--brand-light);border-radius:14px;padding:12px;cursor:pointer;border:2px solid transparent;transition:border-color .15s; }
+    .date-box.active { border-color:var(--brand); }
+    .date-box-label { font-size:10px;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px; }
+    .date-box-value { font-size:15px;font-weight:800;color:#111; }
+    .date-box-sub { font-size:11px;color:#6b7280;margin-top:2px; }
     /* OSPITI */
-    .ospiti-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
-    .ospiti-row:last-child { border-bottom: none; }
-    .ospiti-label { font-size: 14px; font-weight: 600; color: #111; }
-    .ospiti-sub { font-size: 12px; color: #9ca3af; }
-    .ospiti-controls { display: flex; align-items: center; gap: 12px; }
-    .ospiti-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--brand); background: #fff; color: var(--brand); font-size: 20px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
-    .ospiti-btn:hover { background: var(--brand); color: #fff; }
-    .ospiti-btn:disabled { border-color: #e5e7eb; color: #d1d5db; cursor: not-allowed; }
-    .ospiti-num { font-size: 18px; font-weight: 800; min-width: 28px; text-align: center; }
-
+    .ospiti-row { display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f3f4f6; }
+    .ospiti-row:last-child { border-bottom:none; }
+    .ospiti-label { font-size:14px;font-weight:700;color:#111; }
+    .ospiti-sub { font-size:11px;color:#9ca3af; }
+    .ospiti-controls { display:flex;align-items:center;gap:12px; }
+    .ospiti-btn { width:34px;height:34px;border-radius:50%;border:2px solid var(--brand);background:#fff;color:var(--brand);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center; }
+    .ospiti-btn:disabled { border-color:#e5e7eb;color:#d1d5db;cursor:not-allowed; }
+    .ospiti-num { font-size:17px;font-weight:800;min-width:24px;text-align:center; }
     /* CAMERE */
-    .camera-card { border: 2px solid #e5e7eb; border-radius: 14px; padding: 14px; margin-bottom: 10px; cursor: pointer; transition: all .15s; position: relative; overflow: hidden; }
-    .camera-card.selected { border-color: var(--brand); background: var(--brand-light); }
-    .camera-card.non-disponibile { opacity: .5; cursor: not-allowed; }
-    .camera-img { width: 100%; height: 160px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; background: var(--brand-light); display: flex; align-items: center; justify-content: center; font-size: 40px; overflow: hidden; }
-    .camera-img img { width: 100%; height: 100%; object-fit: cover; }
-    .camera-nome { font-size: 16px; font-weight: 800; color: #111; }
-    .camera-tipo { font-size: 12px; color: var(--brand); font-weight: 600; margin-top: 2px; }
-    .camera-desc { font-size: 13px; color: #6b7280; margin-top: 6px; line-height: 1.5; }
-    .camera-info { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-    .camera-badge { background: #f3f4f6; border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; color: #374151; }
-    .camera-prezzo { font-size: 22px; font-weight: 800; color: var(--brand); margin-top: 10px; }
-    .camera-prezzo-sub { font-size: 12px; color: #9ca3af; font-weight: 500; }
-    .camera-sel-badge { position: absolute; top: 12px; right: 12px; background: var(--brand); color: #fff; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 800; display: none; }
-    .camera-card.selected .camera-sel-badge { display: block; }
-
+    .camera-card { border:2px solid #e5e7eb;border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden; }
+    .camera-card.selected { border-color:var(--brand);background:var(--brand-light); }
+    .camera-card.non-disp { opacity:.45;cursor:not-allowed; }
+    .camera-foto { width:100%;height:150px;object-fit:cover;border-radius:10px;margin-bottom:10px;background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:40px;overflow:hidden; }
+    .camera-foto img { width:100%;height:100%;object-fit:cover; }
+    .camera-nome { font-size:16px;font-weight:800;color:#111; }
+    .camera-tipo { font-size:12px;color:var(--brand);font-weight:600;margin-top:2px; }
+    .camera-desc { font-size:13px;color:#6b7280;margin-top:6px;line-height:1.5; }
+    .camera-badges { display:flex;gap:6px;flex-wrap:wrap;margin-top:8px; }
+    .camera-badge { background:#f3f4f6;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:#374151; }
+    .camera-prezzo { font-size:22px;font-weight:800;color:var(--brand);margin-top:10px; }
+    .camera-prezzo span { font-size:12px;color:#9ca3af;font-weight:500; }
+    .camera-sel { position:absolute;top:10px;right:10px;background:var(--brand);color:#fff;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;display:none; }
+    .camera-card.selected .camera-sel { display:block; }
     /* RIEPILOGO */
-    .riepilogo-box { background: var(--brand-light); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
-    .ries-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; color: #374151; }
-    .ries-row.total { font-size: 18px; font-weight: 800; color: #111; border-top: 1px solid #c5dde7; padding-top: 8px; margin-top: 6px; margin-bottom: 0; }
-
+    .ries-box { background:var(--brand-light);border-radius:14px;padding:14px;margin-bottom:14px; }
+    .ries-row { display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:#374151; }
+    .ries-row.tot { font-size:18px;font-weight:800;color:#111;border-top:1px solid rgba(0,0,0,.08);padding-top:8px;margin-top:4px;margin-bottom:0; }
     /* FORM */
-    .form-field { margin-bottom: 12px; }
-    .form-label { font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 5px; display: block; }
-    .form-input { width: 100%; height: 46px; border: 1.5px solid #e5e7eb; border-radius: 12px; padding: 0 14px; font-size: 15px; color: #111; background: #f9fafb; }
-    .form-input:focus { outline: none; border-color: var(--brand); background: #fff; }
-    .form-textarea { width: 100%; border: 1.5px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; font-size: 15px; color: #111; background: #f9fafb; min-height: 80px; resize: none; font-family: inherit; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-    /* BOTTONI */
-    .btn-primary { width: 100%; height: 52px; border: none; border-radius: 14px; background: var(--brand); color: #fff; font-size: 16px; font-weight: 800; cursor: pointer; transition: opacity .15s; }
-    .btn-primary:hover { opacity: .9; }
-    .btn-primary:disabled { background: #d1d5db; cursor: not-allowed; }
-    .btn-ghost { width: 100%; height: 48px; border: 1.5px solid #e5e7eb; border-radius: 14px; background: #fff; color: #374151; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; }
-
+    .field { margin-bottom:12px; }
+    .field label { font-size:12px;font-weight:800;color:#374151;margin-bottom:5px;display:block; }
+    .field input,.field select,.field textarea { width:100%;border:1.5px solid #e5e7eb;border-radius:12px;padding:0 14px;font-size:15px;color:#111;background:#f9fafb;height:46px;font-family:inherit; }
+    .field textarea { height:80px;padding:12px 14px;resize:none; }
+    .field input:focus,.field select:focus,.field textarea:focus { outline:none;border-color:var(--brand);background:#fff; }
+    .field-row { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+    /* PAGAMENTO */
+    .pag-card { border:2px solid #e5e7eb;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:all .15s; }
+    .pag-card.selected { border-color:var(--brand);background:var(--brand-light); }
+    .pag-card-title { font-size:15px;font-weight:800;color:#111; }
+    .pag-card-sub { font-size:13px;color:#6b7280;margin-top:4px;line-height:1.4; }
+    .pag-card-importo { font-size:20px;font-weight:800;color:var(--brand);margin-top:8px; }
     /* CTA STICKY */
-    .cta-sticky { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); z-index: 100; box-shadow: 0 -4px 20px rgba(0,0,0,.08); }
-    .cta-inner { display: flex; gap: 10px; align-items: center; max-width: 480px; margin: 0 auto; }
-    .cta-info { flex: 1; }
-    .cta-prezzo { font-size: 20px; font-weight: 800; color: var(--brand); }
-    .cta-label { font-size: 11px; color: #9ca3af; }
-
-    /* SUCCESSO */
-    .success-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; padding: 32px 20px; gap: 14px; }
-    .success-icon { font-size: 64px; }
-    .success-title { font-size: 24px; font-weight: 800; color: #111; }
-    .success-sub { font-size: 15px; color: #6b7280; line-height: 1.6; }
-
-    /* LOADER */
-    .loader { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 14px; }
-    .spinner { width: 44px; height: 44px; border: 4px solid var(--brand-light); border-top-color: var(--brand); border-radius: 50%; animation: spin .8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .footer { text-align: center; padding: 20px 16px 80px; font-size: 12px; color: #9ca3af; }
-    .footer a { color: var(--brand); text-decoration: none; }
-
-    @media (min-width: 480px) {
-      body { display: flex; flex-direction: column; align-items: center; }
-      .hero, .steps, .section, .cta-sticky, .footer { max-width: 480px; width: 100%; }
-      .section { margin-left: auto; margin-right: auto; }
+    .cta-bar { position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e5e7eb;padding:12px 16px calc(12px + env(safe-area-inset-bottom));z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,.08); }
+    .cta-inner { display:flex;gap:10px;align-items:center;max-width:480px;margin:0 auto; }
+    .cta-info { flex:1; }
+    .cta-prezzo { font-size:18px;font-weight:800;color:var(--brand); }
+    .cta-label { font-size:11px;color:#9ca3af; }
+    .cta-btn { height:48px;border:none;border-radius:14px;background:var(--brand);color:#fff;font-size:15px;font-weight:800;cursor:pointer;padding:0 22px;white-space:nowrap; }
+    .cta-btn:disabled { background:#d1d5db;cursor:not-allowed; }
+    .btn-ghost { display:block;width:calc(100% - 24px);margin:0 12px 12px;height:48px;border:1.5px solid #e5e7eb;border-radius:14px;background:#fff;color:#374151;font-size:15px;font-weight:700;cursor:pointer; }
+    /* MENU BTN */
+    .menu-btn { display:flex;align-items:center;justify-content:center;gap:10px;background:var(--brand);color:#fff;border:none;border-radius:16px;padding:18px;font-size:16px;font-weight:800;width:calc(100% - 24px);margin:0 12px 12px;cursor:pointer;text-decoration:none;box-shadow:0 4px 16px rgba(14,90,122,0.25); }
+    /* LOADER / ERROR */
+    .page-loader { display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px; }
+    .spinner { width:48px;height:48px;border:4px solid var(--brand-light);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .error-page { display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 20px;text-align:center;gap:12px; }
+    .error-icon { font-size:56px; }
+    .error-title { font-size:20px;font-weight:800; }
+    .error-sub { font-size:14px;color:#6b7280;max-width:280px; }
+    .landing-footer { text-align:center;padding:28px 20px calc(80px + env(safe-area-inset-bottom));font-size:12px;color:#9ca3af;font-weight:600; }
+    .landing-footer a { color:var(--brand);text-decoration:none; }
+    .info-note { background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:10px 12px;font-size:12px;color:#c2410c;font-weight:600;margin-bottom:12px;line-height:1.5; }
+    @media(min-width:480px) {
+      body { display:flex;flex-direction:column;align-items:center; }
+      .hero-social,.steps-bar,.section-card,.cta-bar,.btn-ghost,.menu-btn,.landing-footer { max-width:480px;width:100%; }
     }
   </style>
 </head>
 <body>
 
 <div id="root">
-  <div class="loader"><div class="spinner"></div><div style="font-size:14px;color:#9ca3af;">Caricamento...</div></div>
+  <div class="page-loader"><div class="spinner"></div><div style="font-size:14px;font-weight:700;color:#6b7280;">Caricamento...</div></div>
 </div>
-
-<div class="cta-sticky" id="cta-sticky" style="display:none;">
+<div class="cta-bar" id="cta-bar" style="display:none">
   <div class="cta-inner">
     <div class="cta-info">
-      <div class="cta-prezzo" id="cta-prezzo">€ --</div>
-      <div class="cta-label" id="cta-label">Seleziona camera e date</div>
+      <div class="cta-prezzo" id="cta-prezzo">—</div>
+      <div class="cta-label" id="cta-label">Seleziona date</div>
     </div>
-    <button class="btn-primary" id="cta-btn" style="width:auto;padding:0 24px;" onclick="avanti()">Avanti →</button>
+    <button class="cta-btn" id="cta-btn" onclick="avanti()">Avanti →</button>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-(function() {
-  const SUPA_URL = 'https://cuhcscpvhypoaplcmtjk.supabase.co';
-  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1aGNzY3B2aHlwb2FwbGNtdGprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MjY4MjgsImV4cCI6MjA3OTQwMjgyOH0.q9zAs0oh8F1-whtORHBIORF5jIn1NTS3LvSMWleP0a0';
-  const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+(function(){
+  var SUPA_URL = 'https://cuhcscpvhypoaplcmtjk.supabase.co';
+  var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1aGNzY3B2aHlwb2FwbGNtdGprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MjY4MjgsImV4cCI6MjA3OTQwMjgyOH0.q9zAs0oh8F1-whtORHBIORF5jIn1NTS3LvSMWleP0a0';
+  var supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+  var params = new URLSearchParams(window.location.search);
+  var azId = params.get('az');
+  var root = document.getElementById('root');
 
-  const params = new URLSearchParams(window.location.search);
-  const azId = params.get('az');
-  const root = document.getElementById('root');
+  var azienda = {}, cfg = {}, camere = [];
+  var step = 1;
+  var checkin = '', checkout = '', adulti = 2, bambini = 0;
+  var camereSelezionate = []; // array per supportare multi-camera
+  var modalitaPagamento = 'gratuita'; // gratuita | caparra | totale
+  var capPerc = 30;
 
-  let azienda = null, camere = [], cfg = null;
-  let step = 1; // 1=date+ospiti, 2=camere, 3=dati, 4=conferma
-  let checkin = '', checkout = '', adulti = 2, bambini = 0;
-  let cameraSelezionata = null;
-
-  if (!azId) { showError('Link non valido', 'Manca il codice hotel.'); return; }
-
+  if (!azId) { showError('Link non valido','Manca il codice hotel.'); return; }
   init();
 
+  // ═══════════════════════════════════════════════
+  // INIT
+  // ═══════════════════════════════════════════════
   async function init() {
-    const [azRes, cfgRes] = await Promise.all([
+    var oggi = new Date();
+    var d1 = new Date(oggi); d1.setDate(d1.getDate()+1);
+    var d2 = new Date(oggi); d2.setDate(d2.getDate()+2);
+    checkin = toISO(d1); checkout = toISO(d2);
+
+    var [azRes, cfgRes] = await Promise.all([
       supa.from('aziende_pubbliche').select('*').eq('id', azId).maybeSingle(),
       supa.from('hotel_configurazione').select('*').eq('azienda_id', azId).maybeSingle(),
     ]);
-    if (!azRes.data) { showError('Hotel non trovato', 'Il link potrebbe non essere valido.'); return; }
+    if (!azRes.data) { showError('Hotel non trovato','Il link non è valido.'); return; }
     azienda = azRes.data;
     cfg = cfgRes.data || {};
+    modalitaPagamento = cfg.modalita_pagamento || 'gratuita';
+    capPerc = cfg.caparra_percentuale || 30;
 
-    // Brand color
-    if (azienda.colore_brand) document.documentElement.style.setProperty('--brand', azienda.colore_brand);
-    if (azienda.font_family) {
-      document.body.style.fontFamily = azienda.font_family;
-      const lnk = document.createElement('link'); lnk.rel='stylesheet';
-      lnk.href = 'https://fonts.googleapis.com/css2?family=' + azienda.font_family.replace(/['"]/g,'').split(',')[0].trim().replace(/ /g,'+') + ':wght@400;700;800&display=swap';
-      document.head.appendChild(lnk);
+    // Brand
+    if (azienda.colore_brand) {
+      document.documentElement.style.setProperty('--brand', azienda.colore_brand);
+      document.documentElement.style.setProperty('--brand-light', azienda.colore_brand + '18');
     }
-    document.title = 'Prenota — ' + azienda.nome;
-
-    // Date default
-    const oggi = new Date();
-    const dom = new Date(oggi); dom.setDate(dom.getDate() + 1);
-    const dopo = new Date(oggi); dopo.setDate(dopo.getDate() + 2);
-    checkin = toISO(dom);
-    checkout = toISO(dopo);
-
+    if (azienda.font_family) {
+      var fn = azienda.font_family.replace(/['"]/g,'').split(',')[0].trim().replace(/ /g,'+');
+      var lnk = document.createElement('link'); lnk.rel='stylesheet';
+      lnk.href = 'https://fonts.googleapis.com/css2?family='+fn+':wght@400;700;800&display=swap';
+      document.head.appendChild(lnk);
+      document.body.style.fontFamily = azienda.font_family;
+    }
+    document.title = 'Prenota — ' + (cfg.nome_pubblico || azienda.nome || 'Hotel');
+    document.getElementById('cta-bar').style.display = '';
     renderStep1();
   }
 
-  // ═══════════════════════════════════════
-  // STEP 1 — Date e ospiti
-  // ═══════════════════════════════════════
-  function renderStep1() {
-    step = 1;
-    document.getElementById('cta-sticky').style.display = '';
-    document.getElementById('cta-btn').textContent = 'Cerca camere →';
-    aggiornaCtaLabel();
-
-    root.innerHTML = buildHero() + buildSteps() + `
-      <div class="section">
-        <div class="section-title">📅 Quando vuoi soggiornare?</div>
-        <div class="date-grid">
-          <div class="date-box selected" id="box-checkin">
-            <div class="date-box-label">Check-in</div>
-            <div class="date-box-value" id="val-checkin">${formatData(checkin)}</div>
-            <div class="date-box-sub">${getDayName(checkin)}</div>
-          </div>
-          <div class="date-box" id="box-checkout">
-            <div class="date-box-label">Check-out</div>
-            <div class="date-box-value" id="val-checkout">${formatData(checkout)}</div>
-            <div class="date-box-sub">${getDayName(checkout)}</div>
-          </div>
-        </div>
-        <div class="form-row">
-          <div>
-            <label class="form-label">Check-in</label>
-            <input type="date" class="date-input" id="inp-checkin" value="${checkin}" min="${toISO(new Date())}">
-          </div>
-          <div>
-            <label class="form-label">Check-out</label>
-            <input type="date" class="date-input" id="inp-checkout" value="${checkout}">
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">👥 Quanti ospiti?</div>
-        <div class="ospiti-row">
-          <div><div class="ospiti-label">Adulti</div><div class="ospiti-sub">Dai 13 anni</div></div>
-          <div class="ospiti-controls">
-            <button class="ospiti-btn" onclick="cambiaOspiti('adulti',-1)" id="btn-ad-min">−</button>
-            <span class="ospiti-num" id="num-adulti">${adulti}</span>
-            <button class="ospiti-btn" onclick="cambiaOspiti('adulti',1)">+</button>
-          </div>
-        </div>
-        <div class="ospiti-row">
-          <div><div class="ospiti-label">Bambini</div><div class="ospiti-sub">0-12 anni</div></div>
-          <div class="ospiti-controls">
-            <button class="ospiti-btn" onclick="cambiaOspiti('bambini',-1)" id="btn-bam-min">−</button>
-            <span class="ospiti-num" id="num-bambini">${bambini}</span>
-            <button class="ospiti-btn" onclick="cambiaOspiti('bambini',1)">+</button>
-          </div>
-        </div>
-        ${adulti > 4 ? `<div style="background:#fff7ed;border-radius:10px;padding:10px 12px;font-size:12px;color:#c2410c;margin-top:10px;">ℹ️ Per gruppi numerosi potrebbe essere necessaria più di una camera. Contattaci per assistenza.</div>` : ''}
-      </div>
-    `;
-
-    // Listeners date
-    document.getElementById('inp-checkin').addEventListener('change', e => {
-      checkin = e.target.value;
-      document.getElementById('val-checkin').textContent = formatData(checkin);
-      document.getElementById('box-checkin').querySelector('.date-box-sub').textContent = getDayName(checkin);
-      // Auto-aggiorna checkout se necessario
-      if (checkout <= checkin) {
-        const d = new Date(checkin); d.setDate(d.getDate() + 1);
-        checkout = toISO(d);
-        document.getElementById('inp-checkout').value = checkout;
-        document.getElementById('val-checkout').textContent = formatData(checkout);
-        document.getElementById('box-checkout').querySelector('.date-box-sub').textContent = getDayName(checkout);
-      }
-      aggiornaCtaLabel();
-    });
-
-    document.getElementById('inp-checkout').addEventListener('change', e => {
-      checkout = e.target.value;
-      document.getElementById('val-checkout').textContent = formatData(checkout);
-      document.getElementById('box-checkout').querySelector('.date-box-sub').textContent = getDayName(checkout);
-      aggiornaCtaLabel();
-    });
-  }
-
-  window.cambiaOspiti = function(tipo, delta) {
-    if (tipo === 'adulti') {
-      adulti = Math.max(1, adulti + delta);
-      document.getElementById('num-adulti').textContent = adulti;
-      document.getElementById('btn-ad-min').disabled = adulti <= 1;
-    } else {
-      bambini = Math.max(0, bambini + delta);
-      document.getElementById('num-bambini').textContent = bambini;
-      document.getElementById('btn-bam-min').disabled = bambini <= 0;
-    }
-    aggiornaCtaLabel();
-  };
-
-  // ═══════════════════════════════════════
-  // STEP 2 — Selezione camera
-  // ═══════════════════════════════════════
-  async function renderStep2() {
-    step = 2;
-    root.innerHTML = buildHero() + buildSteps() + `<div class="loader"><div class="spinner"></div><div style="font-size:13px;color:#9ca3af;margin-top:8px;">Verifica disponibilità...</div></div>`;
-
-    // Carica camere disponibili
-    const { data: camereDB } = await supa
-      .from('hotel_camere')
-      .select('*')
-      .eq('azienda_id', azId)
-      .eq('attiva', true)
-      .order('prezzo_base');
-
-    camere = camereDB || [];
-    const notti = calcolaNotti(checkin, checkout);
-
-    // Verifica disponibilità per ogni camera
-    const prenotazioni = await supa
-      .from('hotel_prenotazioni')
-      .select('camera_id')
-      .eq('azienda_id', azId)
-      .not('stato', 'in', '(cancellata,noshow)')
-      .or(`data_checkin.lt.${checkout},data_checkout.gt.${checkin}`);
-
-    const occupate = new Set((prenotazioni.data || []).map(p => p.camera_id));
-
-    root.innerHTML = buildHero() + buildSteps() + `
-      <div class="section">
-        <div class="section-title">🛏️ Scegli la camera</div>
-        <div style="font-size:13px;color:#6b7280;margin-bottom:14px;">
-          📅 ${formatData(checkin)} → ${formatData(checkout)} · ${notti} nott${notti===1?'e':'i'} · 👥 ${adulti} adult${adulti===1?'o':'i'}${bambini>0?` + ${bambini} bambin${bambini===1?'o':'i'}`:''}
-        </div>
-        ${!camere.length ? '<div style="text-align:center;padding:30px;color:#9ca3af;">Nessuna camera disponibile per queste date.</div>' :
-          camere.map(c => {
-            const disp = !occupate.has(c.id);
-            const prezzoTot = (c.prezzo_base || 0) * notti;
-            return `<div class="camera-card${cameraSelezionata?.id === c.id ? ' selected' : ''}${!disp ? ' non-disponibile' : ''}" onclick="${disp ? `selezionaCamera('${c.id}')` : ''}">
-              <div class="camera-sel-badge">✅ Selezionata</div>
-              <div class="camera-img">${c.foto_url ? `<img src="${esc(c.foto_url)}" alt="${esc(c.nome)}">` : '🛏️'}</div>
-              <div class="camera-nome">${esc(c.nome)}</div>
-              ${c.tipologia ? `<div class="camera-tipo">${esc(c.tipologia)}</div>` : ''}
-              ${c.descrizione ? `<div class="camera-desc">${esc(c.descrizione.substring(0,100))}${c.descrizione.length>100?'...':''}</div>` : ''}
-              <div class="camera-info">
-                ${c.ospiti_max ? `<span class="camera-badge">👥 Max ${c.ospiti_max} ospiti</span>` : ''}
-                ${c.mq ? `<span class="camera-badge">📐 ${c.mq} m²</span>` : ''}
-                ${!disp ? `<span class="camera-badge" style="background:#fee2e2;color:#991b1b;">❌ Non disponibile</span>` : ''}
-              </div>
-              <div class="camera-prezzo">€ ${prezzoTot.toFixed(2)} <span class="camera-prezzo-sub">totale · €${(c.prezzo_base||0).toFixed(2)}/notte</span></div>
-            </div>`;
-          }).join('')
-        }
-      </div>
-      <button class="btn-ghost" style="margin:0 12px 80px;width:calc(100% - 24px);" onclick="renderStep1()">← Modifica date</button>
-    `;
-
-    document.getElementById('cta-btn').textContent = 'Continua →';
-    aggiornaCtaPrezzo();
-  }
-
-  window.selezionaCamera = function(cameraId) {
-    cameraSelezionata = camere.find(c => c.id === cameraId);
-    document.querySelectorAll('.camera-card').forEach(el => el.classList.remove('selected'));
-    document.querySelectorAll('.camera-sel-badge').forEach(el => el.style.display = 'none');
-    const card = document.querySelector(`[onclick="selezionaCamera('${cameraId}')"]`);
-    if (card) {
-      card.classList.add('selected');
-      card.querySelector('.camera-sel-badge').style.display = 'block';
-    }
-    aggiornaCtaPrezzo();
-  };
-
-  // ═══════════════════════════════════════
-  // STEP 3 — Dati ospite
-  // ═══════════════════════════════════════
-  function renderStep3() {
-    step = 3;
-    const notti = calcolaNotti(checkin, checkout);
-    const totale = (cameraSelezionata.prezzo_base || 0) * notti;
-
-    root.innerHTML = buildHero() + buildSteps() + `
-      <div class="section">
-        <div class="section-title">📋 Riepilogo</div>
-        <div class="riepilogo-box">
-          <div class="ries-row"><span>🛏️ ${esc(cameraSelezionata.nome)}</span><span></span></div>
-          <div class="ries-row"><span>📅 ${formatData(checkin)} → ${formatData(checkout)}</span><span>${notti} nott${notti===1?'e':'i'}</span></div>
-          <div class="ries-row"><span>👥 Ospiti</span><span>${adulti} adult${adulti===1?'o':'i'}${bambini>0?` + ${bambini} bambin${bambini===1?'o':'i'}`:''}</span></div>
-          <div class="ries-row"><span>💶 Prezzo/notte</span><span>€${(cameraSelezionata.prezzo_base||0).toFixed(2)}</span></div>
-          <div class="ries-row total"><span>Totale</span><span>€${totale.toFixed(2)}</span></div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">👤 I tuoi dati</div>
-        <div class="form-row">
-          <div class="form-field">
-            <label class="form-label">Nome *</label>
-            <input class="form-input" id="f-nome" placeholder="Mario" autocomplete="given-name">
-          </div>
-          <div class="form-field">
-            <label class="form-label">Cognome *</label>
-            <input class="form-input" id="f-cognome" placeholder="Rossi" autocomplete="family-name">
-          </div>
-        </div>
-        <div class="form-field">
-          <label class="form-label">Email *</label>
-          <input class="form-input" id="f-email" type="email" placeholder="mario@email.it" autocomplete="email">
-        </div>
-        <div class="form-field">
-          <label class="form-label">Telefono</label>
-          <input class="form-input" id="f-tel" type="tel" placeholder="+39 333 1234567" autocomplete="tel">
-        </div>
-        <div class="form-field">
-          <label class="form-label">Orario arrivo previsto</label>
-          <input class="form-input" id="f-arrivo" type="time" value="14:00">
-        </div>
-        <div class="form-field">
-          <label class="form-label">Richieste speciali</label>
-          <textarea class="form-textarea" id="f-note" placeholder="Allergie, preferenze, esigenze particolari..."></textarea>
-        </div>
-        <div style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5;">
-          Confermando la prenotazione accetti la nostra politica di cancellazione.
-          ${cfg.politica_cancellazione ? cfg.politica_cancellazione : ''}
-        </div>
-      </div>
-      <button class="btn-ghost" style="margin:0 12px 80px;width:calc(100% - 24px);" onclick="renderStep2()">← Cambia camera</button>
-    `;
-
-    document.getElementById('cta-btn').textContent = 'Conferma prenotazione →';
-    aggiornaCtaPrezzo();
-  }
-
-  // ═══════════════════════════════════════
-  // CONFERMA PRENOTAZIONE
-  // ═══════════════════════════════════════
-  async function confermaPrenotazione() {
-    const nome = document.getElementById('f-nome')?.value.trim();
-    const cognome = document.getElementById('f-cognome')?.value.trim();
-    const email = document.getElementById('f-email')?.value.trim();
-    const tel = document.getElementById('f-tel')?.value.trim();
-    const arrivo = document.getElementById('f-arrivo')?.value;
-    const note = document.getElementById('f-note')?.value.trim();
-
-    if (!nome || !cognome || !email) {
-      alert('Compila nome, cognome ed email per procedere.');
-      return;
-    }
-
-    const btn = document.getElementById('cta-btn');
-    btn.disabled = true;
-    btn.textContent = 'Conferma in corso...';
-
-    const notti = calcolaNotti(checkin, checkout);
-    const totale = (cameraSelezionata.prezzo_base || 0) * notti;
-    const tokenPubblico = 'bk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
-
-    try {
-      const { data, error } = await supa.from('hotel_prenotazioni').insert({
-        azienda_id:          azId,
-        camera_id:           cameraSelezionata.id,
-        ospite_nome:         nome,
-        ospite_cognome:      cognome,
-        ospite_email:        email,
-        ospite_telefono:     tel || null,
-        data_checkin:        checkin,
-        data_checkout:       checkout,
-        adulti:              adulti,
-        bambini:             bambini,
-        stato:               'confermata',
-        canale:              'online',
-        prezzo_notte:        cameraSelezionata.prezzo_base || 0,
-        prezzo_totale:       totale,
-        // notti calcolato automaticamente dal DB
-        richieste_speciali:  note || null,
-        ora_arrivo_prevista: arrivo || null,
-        token_pubblico:      tokenPubblico,
-        reminder_checkin_inviato:  false,
-        reminder_checkout_inviato: false,
-        post_checkout_inviato:     false,
-      }).select('id').single();
-
-      if (error) throw error;
-
-      // Invia notifica (fire and forget)
-      supa.functions.invoke('hotel-notifica-prenotazione', { body: { id: data.id } }).catch(() => {});
-
-      renderSuccesso(nome, tokenPubblico);
-    } catch(e) {
-      btn.disabled = false;
-      btn.textContent = 'Conferma prenotazione →';
-      alert('Errore nella prenotazione: ' + (e.message || 'Riprova o contattaci.'));
-    }
-  }
-
-  // ═══════════════════════════════════════
-  // SUCCESSO
-  // ═══════════════════════════════════════
-  function renderSuccesso(nome, token) {
-    document.getElementById('cta-sticky').style.display = 'none';
-    const linkBiglietto = `https://hotel.ristoflow-ai.com/hotel-prenotazione.html?t=${token}`;
-    root.innerHTML = buildHero() + `
-      <div class="success-page">
-        <div class="success-icon">🎉</div>
-        <div class="success-title">Prenotazione confermata!</div>
-        <div class="success-sub">Grazie ${esc(nome)}!<br>Ti abbiamo inviato una email di conferma con tutti i dettagli.</div>
-        <a href="${linkBiglietto}" style="display:block;width:100%;max-width:300px;text-align:center;background:var(--brand);color:#fff;border-radius:14px;padding:16px;text-decoration:none;font-size:15px;font-weight:800;">
-          📋 Visualizza la prenotazione
-        </a>
-        <a href="https://hotel.ristoflow-ai.com/booking.html?az=${azId}" style="display:block;width:100%;max-width:300px;text-align:center;background:#f3f4f6;color:#374151;border-radius:14px;padding:14px;text-decoration:none;font-size:14px;font-weight:700;margin-top:4px;">
-          ← Torna all'hotel
-        </a>
-      </div>
-      <div class="footer">Powered by <a href="https://ristoflow-ai.com">Ristoflow Hotel</a></div>
-    `;
-  }
-
-  // ═══════════════════════════════════════
-  // NAVIGAZIONE
-  // ═══════════════════════════════════════
-  window.avanti = async function() {
-    if (step === 1) {
-      if (!checkin || !checkout || checkout <= checkin) {
-        alert('Seleziona date valide.');
-        return;
-      }
-      await renderStep2();
-    } else if (step === 2) {
-      if (!cameraSelezionata) {
-        alert('Seleziona una camera per continuare.');
-        return;
-      }
-      renderStep3();
-    } else if (step === 3) {
-      await confermaPrenotazione();
-    }
-  };
-
-  // ═══════════════════════════════════════
-  // COMPONENTI
-  // ═══════════════════════════════════════
+  // ═══════════════════════════════════════════════
+  // HERO — identico a hotel-prenotazione.html
+  // ═══════════════════════════════════════════════
   function buildHero() {
-    const nomeHotel = cfg.nome_pubblico || azienda.nome || 'Hotel';
-    return `<div class="hero">
-      ${azienda.cover_url ? `<img src="${esc(azienda.cover_url)}" alt="${esc(nomeHotel)}">` : ''}
-      <div class="hero-overlay"></div>
-      <div class="hero-content" style="display:flex;align-items:flex-end;gap:12px;">
-        ${azienda.logo_url ? `<img src="${esc(azienda.logo_url)}" alt="Logo" style="width:56px;height:56px;border-radius:50%;border:3px solid #fff;object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.2);">` : ''}
-        <div>
-          <div class="hero-nome">${esc(nomeHotel)}</div>
-          <div class="hero-sub">🏨 Prenota il tuo soggiorno</div>
-        </div>
-      </div>
-    </div>`;
+    var nomeH = cfg.nome_pubblico || azienda.nome || 'Hotel';
+    var h = '<div class="hero-social"><div class="social-cover">';
+    if (azienda.cover_url) h += '<img class="social-cover-img" src="'+escH(azienda.cover_url)+'" alt="">';
+    else h += '<div class="social-cover-empty" style="background:var(--brand)">🏨</div>';
+    h += '<div class="social-cover-overlay"></div></div>';
+    h += '<div class="social-profile-row"><div class="social-logo-wrap">';
+    if (azienda.logo_url) h += '<img class="social-logo-img" src="'+escH(azienda.logo_url)+'" alt="Logo">';
+    else h += '<div class="social-logo-empty">🏨</div>';
+    h += '</div><div class="social-profile-info">';
+    h += '<div class="social-nome">'+escH(nomeH)+'</div>';
+    h += '<div class="social-sub">🏨 Prenota il tuo soggiorno</div>';
+    h += '</div></div></div>';
+    return h;
   }
 
   function buildSteps() {
-    const steps = ['Date', 'Camera', 'Dati'];
-    return `<div class="steps">` + steps.map((s, i) => {
-      const n = i + 1;
-      const cls = n < step ? 'done' : n === step ? 'active' : '';
-      const line = i < steps.length - 1 ? `<div class="step-line${n < step ? ' done' : ''}"></div>` : '';
-      return `<div class="step ${cls}"><div class="step-num">${n < step ? '✓' : n}</div>${s}</div>${line}`;
-    }).join('') + `</div>`;
+    var labels = ['Date','Camera','Dati'+(modalitaPagamento!=='gratuita'?' + Pago':''),'✓'];
+    var maxStep = modalitaPagamento !== 'gratuita' ? 4 : 3;
+    var h = '<div class="steps-bar">';
+    for (var i=0; i<maxStep; i++) {
+      var n = i+1;
+      var cls = n < step ? 'done' : n === step ? 'active' : '';
+      h += '<div class="step-item '+cls+'"><div class="step-num">'+(n<step?'✓':n)+'</div>'+(i<maxStep-1?labels[i]:'')+'</div>';
+      if (i < maxStep-1) h += '<div class="step-line'+(n<step?' done':'')+'"></div>';
+    }
+    h += '</div>';
+    return h;
   }
 
-  function aggiornaCtaLabel() {
-    const notti = calcolaNotti(checkin, checkout);
-    const el = document.getElementById('cta-label');
-    if (el) el.textContent = notti > 0 ? `${notti} nott${notti===1?'e':'i'} · ${adulti} adult${adulti===1?'o':'i'}` : 'Seleziona date valide';
+  // ═══════════════════════════════════════════════
+  // STEP 1 — Date e ospiti
+  // ═══════════════════════════════════════════════
+  function renderStep1() {
+    step = 1;
+    aggiornaCtaStep1();
+    var h = buildHero() + buildSteps();
+    h += '<div class="section-card"><div class="section-title">📅 Quando vuoi soggiornare?</div>';
+    h += '<div class="date-grid">';
+    h += '<div class="date-box active" id="box-ci"><div class="date-box-label">Check-in</div><div class="date-box-value" id="val-ci">'+fmtData(checkin)+'</div><div class="date-box-sub">'+fmtDay(checkin)+'</div></div>';
+    h += '<div class="date-box" id="box-co"><div class="date-box-label">Check-out</div><div class="date-box-value" id="val-co">'+fmtData(checkout)+'</div><div class="date-box-sub">'+fmtDay(checkout)+'</div></div>';
+    h += '</div>';
+    h += '<div class="field-row">';
+    h += '<div class="field"><label>Check-in</label><input type="date" id="inp-ci" value="'+checkin+'" min="'+toISO(new Date())+'"></div>';
+    h += '<div class="field"><label>Check-out</label><input type="date" id="inp-co" value="'+checkout+'"></div>';
+    h += '</div></div>';
+    h += '<div class="section-card"><div class="section-title">👥 Quanti ospiti?</div>';
+    h += '<div class="ospiti-row"><div><div class="ospiti-label">Adulti</div><div class="ospiti-sub">13+ anni</div></div>';
+    h += '<div class="ospiti-controls"><button class="ospiti-btn" id="ad-min" onclick="chOsp(\'adulti\',-1)">−</button><span class="ospiti-num" id="n-ad">'+adulti+'</span><button class="ospiti-btn" onclick="chOsp(\'adulti\',1)">+</button></div></div>';
+    h += '<div class="ospiti-row"><div><div class="ospiti-label">Bambini</div><div class="ospiti-sub">0-12 anni</div></div>';
+    h += '<div class="ospiti-controls"><button class="ospiti-btn" id="bam-min" onclick="chOsp(\'bambini\',-1)">−</button><span class="ospiti-num" id="n-bam">'+bambini+'</span><button class="ospiti-btn" onclick="chOsp(\'bambini\',1)">+</button></div></div>';
+    h += '</div>';
+    h += '<div class="landing-footer">Powered by <a href="https://ristoflow-ai.com">Ristoflow Hotel</a></div>';
+    root.innerHTML = h;
+
+    document.getElementById('inp-ci').addEventListener('change', function(e){
+      checkin = e.target.value;
+      document.getElementById('val-ci').textContent = fmtData(checkin);
+      document.getElementById('box-ci').querySelector('.date-box-sub').textContent = fmtDay(checkin);
+      if (checkout <= checkin) {
+        var d = new Date(checkin); d.setDate(d.getDate()+1); checkout = toISO(d);
+        document.getElementById('inp-co').value = checkout;
+        document.getElementById('val-co').textContent = fmtData(checkout);
+        document.getElementById('box-co').querySelector('.date-box-sub').textContent = fmtDay(checkout);
+      }
+      aggiornaCtaStep1();
+    });
+    document.getElementById('inp-co').addEventListener('change', function(e){
+      checkout = e.target.value;
+      document.getElementById('val-co').textContent = fmtData(checkout);
+      document.getElementById('box-co').querySelector('.date-box-sub').textContent = fmtDay(checkout);
+      aggiornaCtaStep1();
+    });
+    document.getElementById('ad-min').disabled = adulti <= 1;
+    document.getElementById('bam-min').disabled = bambini <= 0;
   }
 
-  function aggiornaCtaPrezzo() {
-    const el = document.getElementById('cta-prezzo');
-    if (!el) return;
-    if (cameraSelezionata) {
-      const notti = calcolaNotti(checkin, checkout);
-      el.textContent = '€ ' + ((cameraSelezionata.prezzo_base || 0) * notti).toFixed(2);
-      document.getElementById('cta-label').textContent = esc(cameraSelezionata.nome);
+  window.chOsp = function(tipo, delta) {
+    if (tipo==='adulti') { adulti=Math.max(1,adulti+delta); document.getElementById('n-ad').textContent=adulti; document.getElementById('ad-min').disabled=adulti<=1; }
+    else { bambini=Math.max(0,bambini+delta); document.getElementById('n-bam').textContent=bambini; document.getElementById('bam-min').disabled=bambini<=0; }
+    aggiornaCtaStep1();
+  };
+
+  function aggiornaCtaStep1() {
+    var n = notti(); var el = document.getElementById('cta-label');
+    if (el) el.textContent = n>0 ? n+' nott'+(n===1?'e':'i')+' · '+adulti+' adult'+(adulti===1?'o':'i') : 'Seleziona date valide';
+    var ep = document.getElementById('cta-prezzo'); if(ep) ep.textContent = n>0 ? 'Cerca camere' : '—';
+  }
+
+  // ═══════════════════════════════════════════════
+  // STEP 2 — Selezione camera (multi-camera)
+  // ═══════════════════════════════════════════════
+  async function renderStep2() {
+    step = 2;
+    root.innerHTML = buildHero() + buildSteps() + '<div class="page-loader" style="min-height:200px"><div class="spinner"></div><div style="font-size:13px;color:#6b7280">Verifico disponibilità...</div></div>';
+
+    var nn = notti();
+    var ospTot = adulti + bambini;
+
+    // Carica camere attive
+    var { data: db } = await supa.from('hotel_camere').select('*').eq('azienda_id', azId).eq('attiva', true).order('prezzo_base');
+    camere = db || [];
+
+    // Prenotazioni sovrappanti
+    var { data: prenDB } = await supa.from('hotel_prenotazioni')
+      .select('camera_id').eq('azienda_id', azId)
+      .not('stato','in','(cancellata,noshow)')
+      .lt('data_checkin', checkout).gt('data_checkout', checkin);
+    var occupate = new Set((prenDB||[]).map(function(p){ return p.camera_id; }));
+
+    // Rimuovi camere già selezionate dall'utente (per multi-camera)
+    var selIds = new Set(camereSelezionate.map(function(c){ return c.id; }));
+
+    var h = buildHero() + buildSteps();
+
+    // Banner ospiti rimasti
+    var ospAssegnati = camereSelezionate.reduce(function(s,c){ return s+(c.ospiti_max||1); },0);
+    var ospRimasti = ospTot - ospAssegnati;
+
+    if (camereSelezionate.length > 0) {
+      h += '<div class="section-card">';
+      h += '<div class="section-title">✅ Camere selezionate</div>';
+      camereSelezionate.forEach(function(c,i){
+        h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6;">';
+        h += '<div><div style="font-size:14px;font-weight:700">'+escH(c.nome)+'</div><div style="font-size:12px;color:#6b7280">€'+parseFloat(c.prezzo_base||0).toFixed(2)+'/notte · max '+c.ospiti_max+' ospiti</div></div>';
+        h += '<button onclick="rimuoviCamera('+i+')" style="border:none;background:#fee2e2;color:#991b1b;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;">Rimuovi</button>';
+        h += '</div>';
+      });
+      if (ospRimasti > 0) {
+        h += '<div class="info-note" style="margin-top:10px;margin-bottom:0">👥 Hai ancora <strong>'+ospRimasti+' ospiti</strong> senza camera. Aggiungi un\'altra camera.</div>';
+      }
+      h += '</div>';
+    }
+
+    if (ospRimasti > 0 || camereSelezionate.length === 0) {
+      h += '<div class="section-card"><div class="section-title">🛏️ '+(camereSelezionate.length>0?'Aggiungi un\'altra camera':'Scegli la camera')+'</div>';
+      h += '<div style="font-size:13px;color:#6b7280;margin-bottom:12px">📅 '+fmtData(checkin)+' → '+fmtData(checkout)+' · '+nn+' nott'+(nn===1?'e':'i')+'</div>';
+
+      if (!camere.length) {
+        h += '<div style="text-align:center;padding:30px;color:#9ca3af">Nessuna camera disponibile per queste date.</div>';
+      } else {
+        camere.forEach(function(c){
+          if (selIds.has(c.id)) return; // già selezionata
+          var disp = !occupate.has(c.id);
+          var prezzoTot = parseFloat(c.prezzo_base||0) * nn;
+          var foto = (c.foto_urls && c.foto_urls.length>0) ? c.foto_urls[0] : null;
+          h += '<div class="camera-card'+(disp?'':' non-disp')+'" id="cc-'+c.id+'" onclick="'+(disp?'aggiungiCamera(\''+c.id+'\')':'')+'">';
+          h += '<div class="camera-sel">✅ Selezionata</div>';
+          h += '<div class="camera-foto">'+(foto?'<img src="'+escH(foto)+'" alt="">':'🛏️')+'</div>';
+          h += '<div class="camera-nome">'+escH(c.nome)+'</div>';
+          if (c.tipologia) h += '<div class="camera-tipo">'+escH(c.tipologia)+'</div>';
+          if (c.descrizione) h += '<div class="camera-desc">'+escH(c.descrizione.substring(0,120))+(c.descrizione.length>120?'...':'')+'</div>';
+          h += '<div class="camera-badges">';
+          if (c.ospiti_max) h += '<span class="camera-badge">👥 Max '+c.ospiti_max+'</span>';
+          if (c.mq) h += '<span class="camera-badge">📐 '+c.mq+' m²</span>';
+          if (!disp) h += '<span class="camera-badge" style="background:#fee2e2;color:#991b1b">❌ Non disp.</span>';
+          h += '</div>';
+          h += '<div class="camera-prezzo">€ '+prezzoTot.toFixed(2)+' <span>tot. · €'+parseFloat(c.prezzo_base||0).toFixed(2)+'/notte</span></div>';
+          h += '</div>';
+        });
+      }
+      h += '</div>';
+    }
+
+    h += '<button class="btn-ghost" onclick="renderStep1()">← Modifica date e ospiti</button>';
+    h += '<div class="landing-footer">Powered by <a href="https://ristoflow-ai.com">Ristoflow Hotel</a></div>';
+    root.innerHTML = h;
+    aggiornaCtaStep2();
+  }
+
+  window.aggiungiCamera = function(id) {
+    var c = camere.find(function(x){ return x.id===id; });
+    if (!c) return;
+    camereSelezionate.push(c);
+    renderStep2();
+  };
+
+  window.rimuoviCamera = function(idx) {
+    camereSelezionate.splice(idx,1);
+    renderStep2();
+  };
+
+  function aggiornaCtaStep2() {
+    var nn = notti();
+    var tot = camereSelezionate.reduce(function(s,c){ return s+parseFloat(c.prezzo_base||0)*nn; },0);
+    var ospTot = adulti+bambini;
+    var ospAss = camereSelezionate.reduce(function(s,c){ return s+(c.ospiti_max||1); },0);
+    var ep = document.getElementById('cta-prezzo');
+    var el = document.getElementById('cta-label');
+    var btn = document.getElementById('cta-btn');
+    if (camereSelezionate.length===0) {
+      if(ep) ep.textContent='Scegli camera';
+      if(el) el.textContent='';
+      if(btn) btn.disabled=true;
     } else {
-      el.textContent = 'Scegli camera';
+      if(ep) ep.textContent='€ '+tot.toFixed(2);
+      if(el) el.textContent=camereSelezionate.length+' camera'+(camereSelezionate.length>1?'e':'')+' · '+nn+' nott'+(nn===1?'e':'i');
+      if(btn) btn.disabled = ospAss < ospTot;
+      if(btn && ospAss < ospTot) btn.textContent = 'Aggiungi camera →';
+      else if(btn) btn.textContent = 'Continua →';
     }
   }
 
-  // ═══════════════════════════════════════
+  // ═══════════════════════════════════════════════
+  // STEP 3 — Dati ospite
+  // ═══════════════════════════════════════════════
+  function renderStep3() {
+    step = 3;
+    var nn = notti();
+    var tot = totaleSelezionato();
+    var h = buildHero() + buildSteps();
+
+    // Riepilogo
+    h += '<div class="section-card"><div class="section-title">📋 Riepilogo prenotazione</div>';
+    h += '<div class="ries-box">';
+    camereSelezionate.forEach(function(c){
+      h += '<div class="ries-row"><span>🛏️ '+escH(c.nome)+'</span><span>€'+parseFloat(c.prezzo_base||0).toFixed(2)+'/notte</span></div>';
+    });
+    h += '<div class="ries-row"><span>📅 '+fmtData(checkin)+' → '+fmtData(checkout)+'</span><span>'+nn+' nott'+(nn===1?'e':'i')+'</span></div>';
+    h += '<div class="ries-row"><span>👥 Ospiti</span><span>'+adulti+' adult'+(adulti===1?'o':'i')+(bambini>0?' + '+bambini+' bamb'+(bambini===1?'ino':'ini'):'')+'</span></div>';
+    h += '<div class="ries-row tot"><span>Totale soggiorno</span><span>€ '+tot.toFixed(2)+'</span></div>';
+    h += '</div></div>';
+
+    // Dati ospite
+    h += '<div class="section-card"><div class="section-title">👤 I tuoi dati</div>';
+    h += '<div class="field-row"><div class="field"><label>Nome *</label><input id="f-nome" placeholder="Mario" autocomplete="given-name"></div>';
+    h += '<div class="field"><label>Cognome *</label><input id="f-cognome" placeholder="Rossi" autocomplete="family-name"></div></div>';
+    h += '<div class="field"><label>Email *</label><input type="email" id="f-email" placeholder="mario@email.it" autocomplete="email"></div>';
+    h += '<div class="field"><label>Telefono</label><input type="tel" id="f-tel" placeholder="+39 333 1234567" autocomplete="tel"></div>';
+    h += '<div class="field"><label>Orario arrivo previsto</label><input type="time" id="f-arrivo" value="14:00"></div>';
+    h += '<div class="field"><label>Richieste speciali</label><textarea id="f-note" placeholder="Allergie, preferenze, esigenze particolari..."></textarea></div>';
+    h += '</div>';
+
+    h += '<button class="btn-ghost" onclick="renderStep2()">← Cambia camera</button>';
+    h += '<div class="landing-footer">Powered by <a href="https://ristoflow-ai.com">Ristoflow Hotel</a></div>';
+    root.innerHTML = h;
+
+    var ep = document.getElementById('cta-prezzo'); if(ep) ep.textContent = '€ '+tot.toFixed(2);
+    var el = document.getElementById('cta-label'); if(el) el.textContent = camereSelezionate.map(function(c){return c.nome;}).join(' + ');
+    var btn = document.getElementById('cta-btn');
+    if (btn) {
+      if (modalitaPagamento !== 'gratuita') btn.textContent = 'Continua al pagamento →';
+      else btn.textContent = 'Conferma prenotazione →';
+      btn.disabled = false;
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // STEP 4 — Pagamento (se richiesto)
+  // ═══════════════════════════════════════════════
+  function renderStep4() {
+    step = 4;
+    var tot = totaleSelezionato();
+    var caparra = modalitaPagamento==='caparra' ? Math.round(tot * capPerc / 100 * 100)/100 : tot;
+    var h = buildHero() + buildSteps();
+
+    h += '<div class="section-card"><div class="section-title">💳 Modalità di pagamento</div>';
+
+    if (modalitaPagamento === 'caparra') {
+      h += '<div class="pag-card selected" id="pc-cap">';
+      h += '<div class="pag-card-title">💳 Caparra '+capPerc+'%</div>';
+      h += '<div class="pag-card-sub">Paga ora la caparra e il resto al check-in.</div>';
+      h += '<div class="pag-card-importo">€ '+caparra.toFixed(2)+' <span style="font-size:13px;color:#9ca3af;font-weight:500">da pagare ora</span></div>';
+      h += '<div style="font-size:12px;color:#6b7280;margin-top:6px">Saldo all\'arrivo: €'+(tot-caparra).toFixed(2)+'</div>';
+      h += '</div>';
+    } else if (modalitaPagamento === 'totale') {
+      h += '<div class="pag-card selected">';
+      h += '<div class="pag-card-title">💳 Pagamento totale'+(cfg.pagamento_non_rimborsabile?' — Non rimborsabile':'')+'</div>';
+      h += '<div class="pag-card-sub">'+(cfg.pagamento_non_rimborsabile?'Pagamento non rimborsabile. La prenotazione sarà confermata subito.':'Paga il totale ora per confermare la prenotazione.')+'</div>';
+      h += '<div class="pag-card-importo">€ '+tot.toFixed(2)+'</div>';
+      h += '</div>';
+    }
+
+    h += '<div id="stripe-element-wrap" style="margin-top:14px;background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:12px;padding:14px;">';
+    h += '<div id="stripe-element"></div>';
+    h += '</div>';
+    h += '<div id="stripe-error" style="color:#991b1b;font-size:13px;margin-top:8px;display:none;"></div>';
+    h += '</div>';
+    h += '<button class="btn-ghost" onclick="renderStep3()">← Torna ai dati</button>';
+    h += '<div class="landing-footer">Powered by <a href="https://ristoflow-ai.com">Ristoflow Hotel</a></div>';
+    root.innerHTML = h;
+
+    var btn = document.getElementById('cta-btn');
+    if (btn) { btn.textContent = '💳 Paga €'+caparra.toFixed(2); btn.disabled = false; }
+    var ep = document.getElementById('cta-prezzo'); if(ep) ep.textContent = '€ '+caparra.toFixed(2);
+    var el = document.getElementById('cta-label'); if(el) el.textContent = modalitaPagamento==='caparra'?'Caparra '+capPerc+'%':'Totale';
+
+    // Carica Stripe
+    if (azienda.stripe_attivo && azienda.stripe_publishable_key) {
+      initStripe(caparra);
+    } else {
+      document.getElementById('stripe-element-wrap').innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px">Pagamento online non disponibile — verrai contattato dall\'hotel.</div>';
+    }
+  }
+
+  var stripeInstance = null, stripeElements = null, cardEl = null;
+  function initStripe(importo) {
+    if (!window.Stripe) {
+      var s = document.createElement('script'); s.src='https://js.stripe.com/v3/';
+      s.onload = function(){ initStripeCard(importo); };
+      document.head.appendChild(s);
+    } else { initStripeCard(importo); }
+  }
+
+  function initStripeCard(importo) {
+    stripeInstance = Stripe(azienda.stripe_publishable_key);
+    stripeElements = stripeInstance.elements();
+    cardEl = stripeElements.create('card', { hidePostalCode: true, style: { base: { fontSize:'16px', color:'#111827', fontFamily:'system-ui,sans-serif' }}});
+    cardEl.mount('#stripe-element');
+    cardEl.on('change', function(e){
+      var err = document.getElementById('stripe-error');
+      if (err) { err.textContent = e.error?e.error.message:''; err.style.display = e.error?'':'none'; }
+    });
+  }
+
+  // ═══════════════════════════════════════════════
+  // CONFERMA PRENOTAZIONE
+  // ═══════════════════════════════════════════════
+  async function conferma() {
+    var nome = (document.getElementById('f-nome')||{}).value?.trim();
+    var cognome = (document.getElementById('f-cognome')||{}).value?.trim();
+    var email = (document.getElementById('f-email')||{}).value?.trim();
+    var tel = (document.getElementById('f-tel')||{}).value?.trim();
+    var arrivo = (document.getElementById('f-arrivo')||{}).value;
+    var note = (document.getElementById('f-note')||{}).value?.trim();
+
+    if (!nome || !cognome || !email) { alert('Compila nome, cognome ed email.'); return; }
+
+    var btn = document.getElementById('cta-btn');
+    btn.disabled = true; btn.textContent = 'Conferma in corso...';
+
+    var nn = notti();
+    var tot = totaleSelezionato();
+    var stato = modalitaPagamento !== 'gratuita' ? 'in_attesa_pagamento' : 'confermata';
+
+    try {
+      // Crea prenotazione per ogni camera selezionata
+      var tokens = [];
+      for (var i=0; i<camereSelezionate.length; i++) {
+        var c = camereSelezionate[i];
+        var tok = 'bk-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7)+'-'+i;
+        tokens.push(tok);
+        var prezCam = parseFloat(c.prezzo_base||0)*nn;
+        var { error } = await supa.from('hotel_prenotazioni').insert({
+          azienda_id:          azId,
+          camera_id:           c.id,
+          ospite_nome:         nome,
+          ospite_cognome:      cognome,
+          ospite_email:        email,
+          ospite_telefono:     tel||null,
+          data_checkin:        checkin,
+          data_checkout:       checkout,
+          adulti:              adulti,
+          bambini:             bambini,
+          stato:               stato,
+          canale:              'online',
+          prezzo_notte:        parseFloat(c.prezzo_base||0),
+          prezzo_totale:       prezCam,
+          richieste_speciali:  note||null,
+          ora_arrivo_prevista: arrivo||null,
+          token_pubblico:      tok,
+          reminder_checkin_inviato:  false,
+          reminder_checkout_inviato: false,
+          post_checkout_inviato:     false,
+        });
+        if (error) throw error;
+      }
+
+      // Pagamento Stripe
+      if (modalitaPagamento !== 'gratuita' && stripeInstance && cardEl) {
+        // Stripe payment intent via Edge Function
+        var caparra = modalitaPagamento==='caparra' ? Math.round(tot*capPerc/100*100)/100 : tot;
+        var piRes = await supa.functions.invoke('hotel-crea-payment-intent', {
+          body: { azienda_id: azId, importo: caparra, token: tokens[0], ospite: nome+' '+cognome }
+        });
+        if (piRes.error) throw new Error(piRes.error.message || 'Errore pagamento');
+        var clientSecret = piRes.data?.client_secret;
+        if (!clientSecret) throw new Error('Errore creazione pagamento');
+        var { error: strErr, paymentIntent } = await stripeInstance.confirmCardPayment(clientSecret, {
+          payment_method: { card: cardEl, billing_details: { name: nome+' '+cognome, email: email } }
+        });
+        if (strErr) throw new Error(strErr.message);
+        // Aggiorna stato prenotazione
+        for (var j=0; j<tokens.length; j++) {
+          await supa.from('hotel_prenotazioni').update({ stato:'confermata', stato_pagamento:'paid' }).eq('token_pubblico', tokens[j]);
+        }
+      }
+
+      renderSuccesso(nome, tokens[0]);
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = modalitaPagamento!=='gratuita'?'💳 Riprova':'Conferma prenotazione →';
+      alert('Errore: '+(e.message||'Riprova o contattaci.'));
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // SUCCESSO
+  // ═══════════════════════════════════════════════
+  function renderSuccesso(nome, token) {
+    document.getElementById('cta-bar').style.display='none';
+    var linkPren = 'https://hotel.ristoflow-ai.com/hotel-prenotazione.html?t='+token;
+    var h = buildHero();
+    h += '<div class="section-card" style="text-align:center;padding:32px 16px;">';
+    h += '<div style="font-size:64px;margin-bottom:16px">🎉</div>';
+    h += '<div style="font-size:24px;font-weight:800;margin-bottom:8px">Prenotazione confermata!</div>';
+    h += '<div style="font-size:15px;color:#6b7280;line-height:1.6;margin-bottom:24px">Grazie '+escH(nome)+'!<br>Ti abbiamo inviato la conferma via email.</div>';
+    h += '<a class="menu-btn" href="'+linkPren+'">📋 Visualizza la prenotazione</a>';
+    if (camereSelezionate.length > 1) {
+      h += '<div style="font-size:13px;color:#6b7280;margin-top:8px">Hai prenotato '+camereSelezionate.length+' camere. Riceverai una email per ciascuna.</div>';
+    }
+    h += '</div>';
+    h += '<div class="landing-footer">Powered by <a href="https://ristoflow-ai.com">Ristoflow Hotel</a></div>';
+    root.innerHTML = h;
+  }
+
+  // ═══════════════════════════════════════════════
+  // NAVIGAZIONE
+  // ═══════════════════════════════════════════════
+  window.avanti = async function() {
+    var btn = document.getElementById('cta-btn');
+    if (step===1) {
+      if (!checkin||!checkout||checkout<=checkin) { alert('Seleziona date valide.'); return; }
+      await renderStep2();
+    } else if (step===2) {
+      if (!camereSelezionate.length) { alert('Seleziona almeno una camera.'); return; }
+      var ospTot=adulti+bambini;
+      var ospAss=camereSelezionate.reduce(function(s,c){return s+(c.ospiti_max||1);},0);
+      if (ospAss<ospTot) { alert('Aggiungi un\'altra camera per tutti gli ospiti.'); return; }
+      renderStep3();
+    } else if (step===3) {
+      if (modalitaPagamento!=='gratuita') renderStep4();
+      else await conferma();
+    } else if (step===4) {
+      await conferma();
+    }
+  };
+
+  // ═══════════════════════════════════════════════
   // UTILS
-  // ═══════════════════════════════════════
-  function calcolaNotti(ci, co) {
-    if (!ci || !co) return 0;
-    return Math.round((new Date(co) - new Date(ci)) / 86400000);
-  }
-  function toISO(d) {
-    return d.toISOString().slice(0,10);
-  }
-  function formatData(d) {
-    if (!d) return '--';
-    const p = d.split('-');
-    return `${p[2]}/${p[1]}/${p[0]}`;
-  }
-  function getDayName(d) {
-    if (!d) return '';
-    const giorni = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
-    const p = d.split('-').map(Number);
-    return giorni[new Date(p[0],p[1]-1,p[2]).getDay()];
-  }
-  function esc(v) {
-    return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-  }
-  function showError(t, s) {
-    root.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:32px;gap:12px;"><div style="font-size:56px;">😟</div><div style="font-size:20px;font-weight:800;">${esc(t)}</div><div style="font-size:14px;color:#6b7280;">${esc(s)}</div></div>`;
-  }
+  // ═══════════════════════════════════════════════
+  function notti() { if(!checkin||!checkout) return 0; return Math.max(0,Math.round((new Date(checkout)-new Date(checkin))/86400000)); }
+  function totaleSelezionato() { return camereSelezionate.reduce(function(s,c){return s+parseFloat(c.prezzo_base||0)*notti();},0); }
+  function toISO(d) { return d.toISOString().slice(0,10); }
+  function fmtData(d) { if(!d) return '--'; var p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+  function fmtDay(d) { if(!d) return ''; var g=['Dom','Lun','Mar','Mer','Gio','Ven','Sab']; var p=d.split('-').map(Number); return g[new Date(p[0],p[1]-1,p[2]).getDay()]; }
+  function escH(v) { return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+  function showError(t,s) { root.innerHTML='<div class="error-page"><div class="error-icon">😟</div><div class="error-title">'+escH(t)+'</div><div class="error-sub">'+escH(s)+'</div></div>'; }
 
 })();
 </script>
