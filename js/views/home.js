@@ -124,11 +124,13 @@ async function caricaMeteo(az) {
     const hum   = data.current?.relative_humidity_2m;
     const icona = meteoIcona(code);
     const desc  = meteoDescrizione(code);
-    document.getElementById('meteo-testo').innerHTML =
-      `<strong>${temp}°C</strong> · ${desc} · 💨 ${wind} km/h · 💧 ${hum}%`;
-    document.querySelector('.hero-meteo span').textContent = icona;
+    const meteoEl = document.getElementById('meteo-testo');
+    const heroMeteo = document.querySelector('.hero-meteo span');
+    if (meteoEl) meteoEl.innerHTML = `<strong>${temp}°C</strong> · ${desc} · 💨 ${wind} km/h · 💧 ${hum}%`;
+    if (heroMeteo) heroMeteo.textContent = icona;
   } catch {
-    document.getElementById('meteo-testo').textContent = 'Meteo non disponibile';
+    const meteoEl = document.getElementById('meteo-testo');
+    if (meteoEl) meteoEl.textContent = 'Meteo non disponibile';
   }
 }
 
