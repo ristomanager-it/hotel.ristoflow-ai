@@ -140,6 +140,8 @@
   var camereSelezionate = []; // array per supportare multi-camera
   var modalitaPagamento = 'gratuita'; // gratuita | caparra | totale
   var capPerc = 30;
+  // Dati ospite salvati tra step 3 e 4
+  var datiOspite = { nome:'', cognome:'', email:'', tel:'', arrivo:'14:00', note:'' };
 
   if (!azId) { showError('Link non valido','Manca il codice hotel.'); return; }
   init();
@@ -408,12 +410,12 @@
 
     // Dati ospite
     h += '<div class="section-card"><div class="section-title">👤 I tuoi dati</div>';
-    h += '<div class="field-row"><div class="field"><label>Nome *</label><input id="f-nome" placeholder="Mario" autocomplete="given-name"></div>';
-    h += '<div class="field"><label>Cognome *</label><input id="f-cognome" placeholder="Rossi" autocomplete="family-name"></div></div>';
-    h += '<div class="field"><label>Email *</label><input type="email" id="f-email" placeholder="mario@email.it" autocomplete="email"></div>';
-    h += '<div class="field"><label>Telefono</label><input type="tel" id="f-tel" placeholder="+39 333 1234567" autocomplete="tel"></div>';
-    h += '<div class="field"><label>Orario arrivo previsto</label><input type="time" id="f-arrivo" value="14:00"></div>';
-    h += '<div class="field"><label>Richieste speciali</label><textarea id="f-note" placeholder="Allergie, preferenze, esigenze particolari..."></textarea></div>';
+    h += '<div class="field-row"><div class="field"><label>Nome *</label><input id="f-nome" value="'+escH(datiOspite.nome)+'" placeholder="Mario" autocomplete="given-name"></div>';
+    h += '<div class="field"><label>Cognome *</label><input id="f-cognome" value="'+escH(datiOspite.cognome)+'" placeholder="Rossi" autocomplete="family-name"></div></div>';
+    h += '<div class="field"><label>Email *</label><input type="email" id="f-email" value="'+escH(datiOspite.email)+'" placeholder="mario@email.it" autocomplete="email"></div>';
+    h += '<div class="field"><label>Telefono</label><input type="tel" id="f-tel" value="'+escH(datiOspite.tel)+'" placeholder="+39 333 1234567" autocomplete="tel"></div>';
+    h += '<div class="field"><label>Orario arrivo previsto</label><input type="time" id="f-arrivo" value="'+escH(datiOspite.arrivo||'14:00')+'"></div>';
+    h += '<div class="field"><label>Richieste speciali</label><textarea id="f-note" placeholder="Allergie, preferenze, esigenze particolari...">'+escH(datiOspite.note)+'</textarea></div>';
     h += '</div>';
 
     h += '<button class="btn-ghost" onclick="renderStep2()">← Cambia camera</button>';
@@ -502,12 +504,13 @@
   // CONFERMA PRENOTAZIONE
   // ═══════════════════════════════════════════════
   async function conferma() {
-    var nome = (document.getElementById('f-nome')||{}).value?.trim();
-    var cognome = (document.getElementById('f-cognome')||{}).value?.trim();
-    var email = (document.getElementById('f-email')||{}).value?.trim();
-    var tel = (document.getElementById('f-tel')||{}).value?.trim();
-    var arrivo = (document.getElementById('f-arrivo')||{}).value;
-    var note = (document.getElementById('f-note')||{}).value?.trim();
+    // Leggi da datiOspite (salvati allo step 3) o dal DOM se ancora visibile
+    var nome    = datiOspite.nome    || (document.getElementById('f-nome')||{}).value?.trim() || '';
+    var cognome = datiOspite.cognome || (document.getElementById('f-cognome')||{}).value?.trim() || '';
+    var email   = datiOspite.email   || (document.getElementById('f-email')||{}).value?.trim() || '';
+    var tel     = datiOspite.tel     || (document.getElementById('f-tel')||{}).value?.trim() || '';
+    var arrivo  = datiOspite.arrivo  || (document.getElementById('f-arrivo')||{}).value || '14:00';
+    var note    = datiOspite.note    || (document.getElementById('f-note')||{}).value?.trim() || '';
 
     if (!nome || !cognome || !email) { alert('Compila nome, cognome ed email.'); return; }
 
@@ -614,6 +617,17 @@
       if (ospAss<ospTot) { alert('Aggiungi un\'altra camera per tutti gli ospiti.'); return; }
       renderStep3();
     } else if (step===3) {
+      // Salva dati ospite nelle variabili
+      datiOspite.nome    = document.getElementById('f-nome')?.value?.trim() || '';
+      datiOspite.cognome = document.getElementById('f-cognome')?.value?.trim() || '';
+      datiOspite.email   = document.getElementById('f-email')?.value?.trim() || '';
+      datiOspite.tel     = document.getElementById('f-tel')?.value?.trim() || '';
+      datiOspite.arrivo  = document.getElementById('f-arrivo')?.value || '14:00';
+      datiOspite.note    = document.getElementById('f-note')?.value?.trim() || '';
+      if (!datiOspite.nome || !datiOspite.cognome || !datiOspite.email) {
+        alert('Compila nome, cognome ed email per continuare.');
+        return;
+      }
       if (modalitaPagamento!=='gratuita') renderStep4();
       else await conferma();
     } else if (step===4) {
