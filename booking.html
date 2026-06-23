@@ -164,6 +164,12 @@
 
     // Brand color
     if (azienda.colore_brand) document.documentElement.style.setProperty('--brand', azienda.colore_brand);
+    if (azienda.font_family) {
+      document.body.style.fontFamily = azienda.font_family;
+      const lnk = document.createElement('link'); lnk.rel='stylesheet';
+      lnk.href = 'https://fonts.googleapis.com/css2?family=' + azienda.font_family.replace(/['"]/g,'').split(',')[0].trim().replace(/ /g,'+') + ':wght@400;700;800&display=swap';
+      document.head.appendChild(lnk);
+    }
     document.title = 'Prenota — ' + azienda.nome;
 
     // Date default
@@ -513,12 +519,16 @@
   // COMPONENTI
   // ═══════════════════════════════════════
   function buildHero() {
+    const nomeHotel = cfg.nome_pubblico || azienda.nome || 'Hotel';
     return `<div class="hero">
-      ${azienda.cover_url ? `<img src="${esc(azienda.cover_url)}" alt="">` : ''}
+      ${azienda.cover_url ? `<img src="${esc(azienda.cover_url)}" alt="${esc(nomeHotel)}">` : ''}
       <div class="hero-overlay"></div>
-      <div class="hero-content">
-        <div class="hero-nome">${esc(azienda.nome || 'Hotel')}</div>
-        <div class="hero-sub">🏨 Prenotazione online</div>
+      <div class="hero-content" style="display:flex;align-items:flex-end;gap:12px;">
+        ${azienda.logo_url ? `<img src="${esc(azienda.logo_url)}" alt="Logo" style="width:56px;height:56px;border-radius:50%;border:3px solid #fff;object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.2);">` : ''}
+        <div>
+          <div class="hero-nome">${esc(nomeHotel)}</div>
+          <div class="hero-sub">🏨 Prenota il tuo soggiorno</div>
+        </div>
       </div>
     </div>`;
   }
