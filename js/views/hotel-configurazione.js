@@ -674,12 +674,12 @@ async function renderChatbot(box, c, az) {
   // Carica connessione WhatsApp reale
   const { data: wa } = await supabase
     .from("whatsapp_connessioni")
-    .select("numero_telefono, phone_number_id, attiva")
+    .select("numero_telefono, meta_phone_number_id, attivo")
     .eq("azienda_id", az.id)
     .maybeSingle();
 
   const waNumero   = wa?.numero_telefono || null;
-  const waAttiva   = wa?.attiva === true;
+  const waAttiva   = wa?.attivo === true;
   const waStatoBg  = waAttiva ? "#f0fdf4" : "#fff0f0";
   const waStatoCol = waAttiva ? "#15803d" : "#991b1b";
   const waIcona    = waAttiva ? "✅" : "⚠️";
@@ -957,6 +957,7 @@ function buildTerritorioPayload(container) {
     var desc = container.querySelector("#terr-descrizione")?.value?.trim() || "";
     var park = container.querySelector("#terr-parcheggio")?.value?.trim() || "";
     var parkGrat = container.querySelector("#terr-parcheggio-gratuito")?.checked ?? true;
+    var mapsUrl = container.querySelector("#terr-maps-url")?.value?.trim() || "";
     var autoTxt = container.querySelector("#terr-auto")?.value?.trim() || "";
     var trenoTxt = container.querySelector("#terr-treno")?.value?.trim() || "";
     var aereoTxt = container.querySelector("#terr-aereo")?.value?.trim() || "";
@@ -995,7 +996,7 @@ function buildTerritorioPayload(container) {
       descrizione: desc,
       attrazioni: attrazioni,
       come_arrivare: {
-        auto: autoTxt, treno: trenoTxt, aereo: aereoTxt, bus: busTxt
+        auto: autoTxt, treno: trenoTxt, aereo: aereoTxt, bus: busTxt, maps_url: mapsUrl
       },
       parcheggio: park ? { descrizione: park, gratuito: parkGrat } : null,
       ristoranti: ristoranti,
@@ -1069,6 +1070,14 @@ async function renderTerritorio(box, c, az) {
       <!-- COME ARRIVARE -->
       <div class="card">
         <div class="card-title">🚗 Come arrivare</div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>🗺️ Link Google Maps (posizione hotel)</label>
+          <div style="display:flex;gap:8px;">
+            <input id="terr-maps-url" class="input" type="url" value="${esc(arrivare.maps_url || '')}" placeholder="https://maps.google.com/?q=..." style="flex:1;">
+            <button class="btn btn-ghost btn-sm" onclick="window.open(document.getElementById('terr-maps-url').value||'https://maps.google.com','_blank')" title="Apri link">🔗</button>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Vai su Google Maps → cerca il tuo hotel → Condividi → Copia link</div>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="form-group">
             <label>🚗 In auto</label>
