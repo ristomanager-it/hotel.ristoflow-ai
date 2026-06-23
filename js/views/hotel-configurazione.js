@@ -19,13 +19,15 @@ const TEMPLATE_DEFAULTS = {
 };
 
 const TABS = [
-  { id: "identita",  icon: "🏨", label: "Identità" },
-  { id: "stile",     icon: "🎨", label: "Stile" },
-  { id: "booking",   icon: "📅", label: "Booking" },
-  { id: "pubblica",  icon: "🌐", label: "Pag. pubblica" },
-  { id: "template",  icon: "💬", label: "Template msg" },
-  { id: "chatbot",   icon: "🤖", label: "Chatbot" },
-  { id: "form",      icon: "📝", label: "Form" },
+  { id: "identita",   icon: "🏨", label: "Identità" },
+  { id: "stile",      icon: "🎨", label: "Stile" },
+  { id: "booking",    icon: "📅", label: "Booking" },
+  { id: "pagamenti",  icon: "💳", label: "Pagamenti" },
+  { id: "servizi",    icon: "🛎️", label: "Servizi" },
+  { id: "pubblica",   icon: "🌐", label: "Pag. pubblica" },
+  { id: "template",   icon: "💬", label: "Template msg" },
+  { id: "chatbot",    icon: "🤖", label: "Chatbot" },
+  { id: "form",       icon: "📝", label: "Form" },
   { id: "territorio", icon: "🌍", label: "Territorio" },
 ];
 
@@ -104,6 +106,8 @@ function renderTab(id, c, az, container) {
     case "chatbot":  renderChatbot(box, c, az); break;
     case "form":     renderForm(box, c); break;
     case "territorio": renderTerritorio(box, c, az); break;
+    case "pagamenti":  renderPagamenti(box, c); break;
+    case "servizi":    renderServizi(box, c, az); break;
   }
 }
 
@@ -922,6 +926,16 @@ async function salvaConfigurazione(aziendaId, container) {
     testo_privacy:             getTA("cfg-testo-privacy"),
     testo_conferma:            getTA("cfg-testo-conferma"),
     updated_at:                new Date().toISOString(),
+    // Pagamenti
+    modalita_pagamento:         get("cfg-modalita-pagamento"),
+    caparra_percentuale:        parseInt(get("cfg-caparra-perc")) || 30,
+    pagamento_non_rimborsabile: getCheck("cfg-non-rimborsabile"),
+    // Servizi extra — salvati come JSON
+    servizi_extra: (() => {
+      try {
+        return JSON.parse(container.querySelector("#cfg-servizi-extra-json")?.value || "[]");
+      } catch(e) { return []; }
+    })(),
     // Territorio — salvato su aziende non su hotel_configurazione
   };
 
@@ -948,6 +962,252 @@ async function salvaConfigurazione(aziendaId, container) {
   } else {
     suc.textContent = "✅ Configurazione salvata!";
     setTimeout(() => suc.textContent = "", 3000);
+  }
+}
+
+/* ══════════════════════════════════════════════
+   TAB PAGAMENTI
+══════════════════════════════════════════════ */
+function renderPagamenti(box, c) {
+  box.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div class="card">
+          <div class="card-title">💳 Modalità di pagamento booking online</div>
+          <div class="form-group">
+            <label>Modalità</label>
+            <select id="cfg-modalita-pagamento" class="input" onchange="window._cfgPagamentoChange()">
+              <option value="gratuita" ${(c.modalita_pagamento||'gratuita')==='gratuita'?'selected':''}>🆓 Gratuita — conferma senza pagamento</option>
+              <option value="caparra"  ${(c.modalita_pagamento||'')==='caparra'?'selected':''}>💶 Caparra % — paga una percentuale ora</option>
+              <option value="totale"   ${(c.modalita_pagamento||'')==='totale'?'selected':''}>💳 Totale — paga tutto subito</option>
+            </select>
+          </div>
+
+          <div id="pag-caparra-box" style="display:${(c.modalita_pagamento||'gratuita')==='caparra'?'block':'none'}">
+            <div class="form-group">
+              <label>Percentuale caparra (%)</label>
+              <input type="number" id="cfg-caparra-perc" class="input" value="${c.caparra_percentuale||30}" min="10" max="100" step="5">
+              <small style="color:#6b7280">Es. 30 = il cliente paga il 30% ora, il resto all'arrivo</small>
+            </div>
+          </div>
+
+          <div id="pag-totale-box" style="display:${(c.modalita_pagamento||'')==='totale'?'block':'none'}">
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="cfg-non-rimborsabile" ${c.pagamento_non_rimborsabile?'checked':''}>
+                Pagamento non rimborsabile
+              </label>
+              <small style="color:#6b7280">Il cliente vedrà un avviso che il pagamento non è rimborsabile</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">💳 Carte a garanzia</div>
+          <div style="background:#f0fdf4;border-radius:10px;padding:12px;font-size:13px;color:#166534;margin-bottom:12px">
+            ✅ La modalità "Gratuita" permette di richiedere una carta a garanzia senza addebitare nulla. Configuralo dal tuo gestionale Stripe.
+          </div>
+          <div style="font-size:13px;color:#6b7280;line-height:1.6">
+            Le chiavi Stripe si configurano in <strong>Gestione Aziende → Stripe</strong>.<br>
+            Assicurati di aver abilitato Stripe prima di attivare i pagamenti online.
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-title">📋 Anteprima esperienza cliente</div>
+          <div id="pag-preview" style="border:1px solid #e5e7eb;border-radius:12px;padding:14px;background:#f9fafb;font-size:13px;">
+            ${buildPagamentoPreview(c)}
+          </div>
+          <div style="margin-top:10px;font-size:12px;color:#9ca3af">L'anteprima si aggiorna al salvataggio</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🧾 Politica di cancellazione</div>
+          <div class="form-group">
+            <label>Testo politica (visibile al cliente)</label>
+            <textarea id="cfg-cancellazione" class="input" rows="5" placeholder="Es. Cancellazione gratuita fino a 48h prima. Dopo le 48h si applica una penale del 50%.">${esc(c.politica_cancellazione||'')}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  window._cfgPagamentoChange = function() {
+    var v = document.getElementById('cfg-modalita-pagamento').value;
+    document.getElementById('pag-caparra-box').style.display = v==='caparra'?'block':'none';
+    document.getElementById('pag-totale-box').style.display = v==='totale'?'block':'none';
+  };
+}
+
+function buildPagamentoPreview(c) {
+  var mod = c.modalita_pagamento || 'gratuita';
+  if (mod==='gratuita') return '<div style="color:#059669;font-weight:700">🆓 Prenotazione gratuita</div><div style="margin-top:6px;color:#374151">Il cliente prenota senza pagare nulla. Riceve conferma immediata. Puoi richiedere carta a garanzia tramite Stripe.</div>';
+  if (mod==='caparra') return '<div style="color:#d97706;font-weight:700">💶 Caparra '+(c.caparra_percentuale||30)+'%</div><div style="margin-top:6px;color:#374151">Il cliente paga il '+(c.caparra_percentuale||30)+'% ora con carta. Il resto viene saldato all&#39;arrivo.</div>';
+  if (mod==='totale') return '<div style="color:#7c3aed;font-weight:700">💳 Pagamento totale'+(c.pagamento_non_rimborsabile?' · Non rimborsabile':'')+'</div><div style="margin-top:6px;color:#374151">Il cliente paga il 100% subito. '+(c.pagamento_non_rimborsabile?'Il pagamento non è rimborsabile.':'')+'</div>';
+  return '';
+}
+
+/* ══════════════════════════════════════════════
+   TAB SERVIZI
+══════════════════════════════════════════════ */
+function renderServizi(box, c, az) {
+  var servizi = c.servizi_extra || [];
+
+  // Servizi predefiniti
+  var PREDEFINITI = [
+    { nome: 'Colazione inclusa', icona: '☕', categoria: 'ristorazione', prezzo: 0, gratuito: true },
+    { nome: 'Mezza pensione', icona: '🍽️', categoria: 'ristorazione', prezzo: 35, gratuito: false },
+    { nome: 'Pensione completa', icona: '🍱', categoria: 'ristorazione', prezzo: 60, gratuito: false },
+    { nome: 'Parcheggio privato', icona: '🅿️', categoria: 'comfort', prezzo: 10, gratuito: false },
+    { nome: 'WiFi gratuito', icona: '📶', categoria: 'comfort', prezzo: 0, gratuito: true },
+    { nome: 'Aria condizionata', icona: '❄️', categoria: 'comfort', prezzo: 0, gratuito: true },
+    { nome: 'Transfert aeroporto', icona: '🚗', categoria: 'trasporti', prezzo: 50, gratuito: false },
+    { nome: 'Noleggio bici', icona: '🚴', categoria: 'attività', prezzo: 15, gratuito: false },
+    { nome: 'Massaggio', icona: '💆', categoria: 'benessere', prezzo: 70, gratuito: false },
+    { nome: 'Spa & Sauna', icona: '🧖', categoria: 'benessere', prezzo: 30, gratuito: false },
+    { nome: 'Escursioni guidate', icona: '🥾', categoria: 'attività', prezzo: 40, gratuito: false },
+    { nome: 'Baby sitter', icona: '👶', categoria: 'servizi', prezzo: 20, gratuito: false },
+    { nome: 'Animali ammessi', icona: '🐾', categoria: 'servizi', prezzo: 0, gratuito: true },
+    { nome: 'Check-in anticipato', icona: '⏰', categoria: 'comfort', prezzo: 15, gratuito: false },
+    { nome: 'Check-out posticipato', icona: '🌙', categoria: 'comfort', prezzo: 15, gratuito: false },
+  ];
+
+  function buildServizioCard(s, idx) {
+    return `<div style="border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:8px;background:#fff;" id="serv-card-${idx}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+        <div style="display:flex;gap:10px;flex:1;align-items:center;">
+          <input class="input" style="width:48px;font-size:18px;text-align:center;padding:4px;" value="${esc(s.icona||'🏷️')}" id="serv-icona-${idx}" placeholder="🏷️">
+          <div style="flex:1;">
+            <input class="input" style="width:100%;margin-bottom:6px;" value="${esc(s.nome)}" id="serv-nome-${idx}" placeholder="Nome servizio">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="number" class="input" style="width:100px;" value="${s.prezzo||0}" id="serv-prezzo-${idx}" placeholder="€" min="0" step="0.5">
+              <span style="font-size:12px;color:#6b7280">€/persona/notte</span>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;">
+                <input type="checkbox" id="serv-grat-${idx}" ${s.gratuito?'checked':''}> Gratuito
+              </label>
+            </div>
+            <select class="input" style="width:100%;margin-top:6px;font-size:12px;" id="serv-cat-${idx}">
+              ${['ristorazione','comfort','benessere','attività','trasporti','servizi'].map(cat =>
+                `<option value="${cat}" ${(s.categoria||'servizi')===cat?'selected':''}>${cat.charAt(0).toUpperCase()+cat.slice(1)}</option>`
+              ).join('')}
+            </select>
+          </div>
+        </div>
+        <button onclick="window._rimuoviServizio(${idx})" style="border:none;background:#fee2e2;color:#991b1b;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;">✕ Rimuovi</button>
+      </div>
+    </div>`;
+  }
+
+  box.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            🛎️ Servizi della struttura
+            <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="window._aggiungiServizio()">+ Aggiungi servizio</button>
+          </div>
+          <div id="servizi-lista">
+            ${servizi.map((s, i) => buildServizioCard(s, i)).join('')}
+            ${servizi.length===0?'<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">Nessun servizio configurato.<br>Clicca "+ Aggiungi servizio" per iniziare.</div>':''}
+          </div>
+          <input type="hidden" id="cfg-servizi-extra-json" value="${esc(JSON.stringify(servizi))}">
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-title">⚡ Aggiungi da modelli</div>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:10px">Clicca per aggiungere servizi predefiniti:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            ${PREDEFINITI.map((p, i) => `<button onclick="window._aggiungiPredefinito(${i})" style="border:1px solid #e5e7eb;border-radius:20px;padding:6px 12px;background:#f9fafb;cursor:pointer;font-size:13px;transition:all .15s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='#e5e7eb'">
+              ${p.icona} ${p.nome}${p.prezzo>0?' (€'+p.prezzo+')':' ✓'}
+            </button>`).join('')}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">👁️ Anteprima cliente</div>
+          <div id="servizi-preview" style="font-size:13px;color:#374151;">
+            ${servizi.length===0?'<div style="color:#9ca3af">Nessun servizio da mostrare</div>':
+              servizi.map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f3f4f6;">
+                <span>${s.icona||'🏷️'}</span>
+                <span style="font-weight:600">${s.nome}</span>
+                <span style="margin-left:auto;color:${s.gratuito?'#059669':'var(--primary)'};">${s.gratuito?'✅ Incluso':'€'+s.prezzo}</span>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  var serviziCorrente = [...servizi];
+  var PRED = PREDEFINITI;
+
+  function aggiornaJSON() {
+    var lista = [];
+    var cards = document.querySelectorAll('[id^="serv-card-"]');
+    cards.forEach(function(card) {
+      var i = card.id.replace('serv-card-','');
+      lista.push({
+        nome:      document.getElementById('serv-nome-'+i)?.value||'',
+        icona:     document.getElementById('serv-icona-'+i)?.value||'🏷️',
+        prezzo:    parseFloat(document.getElementById('serv-prezzo-'+i)?.value)||0,
+        gratuito:  document.getElementById('serv-grat-'+i)?.checked||false,
+        categoria: document.getElementById('serv-cat-'+i)?.value||'servizi',
+      });
+    });
+    document.getElementById('cfg-servizi-extra-json').value = JSON.stringify(lista);
+    serviziCorrente = lista;
+    // Aggiorna preview
+    var prev = document.getElementById('servizi-preview');
+    if (prev) prev.innerHTML = lista.length===0?'<div style="color:#9ca3af">Nessun servizio da mostrare</div>':
+      lista.map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f3f4f6;">
+        <span>${s.icona||'🏷️'}</span>
+        <span style="font-weight:600">${s.nome}</span>
+        <span style="margin-left:auto;color:${s.gratuito?'#059669':'var(--primary)'};">${s.gratuito?'✅ Incluso':'€'+s.prezzo}</span>
+      </div>`).join('');
+  }
+
+  window._aggiungiServizio = function() {
+    serviziCorrente.push({ nome:'Nuovo servizio', icona:'🏷️', prezzo:0, gratuito:false, categoria:'servizi' });
+    renderServiziLista(serviziCorrente);
+  };
+
+  window._aggiungiPredefinito = function(idx) {
+    var p = PRED[idx];
+    serviziCorrente.push({...p});
+    renderServiziLista(serviziCorrente);
+  };
+
+  window._rimuoviServizio = function(idx) {
+    serviziCorrente.splice(idx,1);
+    renderServiziLista(serviziCorrente);
+  };
+
+  function renderServiziLista(lista) {
+    var div = document.getElementById('servizi-lista');
+    if (!div) return;
+    div.innerHTML = lista.map((s,i) => buildServizioCard(s,i)).join('') +
+      (lista.length===0?'<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">Clicca "+ Aggiungi servizio" per iniziare.</div>':'');
+    document.getElementById('cfg-servizi-extra-json').value = JSON.stringify(lista);
+    aggiornaJSON();
+    // Re-bind listeners
+    lista.forEach(function(_,i){
+      ['serv-nome-','serv-icona-','serv-prezzo-','serv-grat-','serv-cat-'].forEach(function(pref){
+        var el = document.getElementById(pref+i);
+        if (el) el.addEventListener('change', aggiornaJSON);
+      });
+    });
+    // Aggiorna preview
+    var prev = document.getElementById('servizi-preview');
+    if (prev) prev.innerHTML = lista.length===0?'<div style="color:#9ca3af">Nessun servizio da mostrare</div>':
+      lista.map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f3f4f6;">
+        <span>${s.icona||'🏷️'}</span>
+        <span style="font-weight:600">${s.nome}</span>
+        <span style="margin-left:auto;color:${s.gratuito?'#059669':'var(--primary)'};">${s.gratuito?'✅ Incluso':'€'+s.prezzo}</span>
+      </div>`).join('');
   }
 }
 
