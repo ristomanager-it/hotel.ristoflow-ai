@@ -1,6 +1,585 @@
-[
-  {
-    "column_name": "notti",
-    "generation_expression": "(data_checkout - data_checkin)"
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Prenota — Hotel</title>
+  <link rel="icon" href="logo hotel management1.png" type="image/png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --brand: #0E5A7A; --brand-light: #e8f4f8; --radius: 16px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f6fa; min-height: 100vh; color: #111827; }
+
+    /* HERO */
+    .hero { position: relative; height: 200px; background: linear-gradient(135deg, var(--brand), #1a7a9a); overflow: hidden; }
+    .hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .hero-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.5)); }
+    .hero-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; }
+    .hero-nome { font-size: 22px; font-weight: 800; color: #fff; }
+    .hero-sub { font-size: 13px; color: rgba(255,255,255,.85); margin-top: 3px; }
+
+    /* STEP INDICATOR */
+    .steps { display: flex; align-items: center; background: #fff; padding: 14px 16px; border-bottom: 1px solid #f3f4f6; gap: 6px; }
+    .step { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #9ca3af; }
+    .step.active { color: var(--brand); }
+    .step.done { color: #059669; }
+    .step-num { width: 24px; height: 24px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+    .step.active .step-num { background: var(--brand); color: #fff; }
+    .step.done .step-num { background: #059669; color: #fff; }
+    .step-line { flex: 1; height: 2px; background: #f3f4f6; }
+    .step-line.done { background: #059669; }
+
+    /* SEZIONI */
+    .section { background: #fff; margin: 8px 12px; border-radius: var(--radius); padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+    .section-title { font-size: 15px; font-weight: 800; color: #374151; margin-bottom: 14px; }
+
+    /* DATE PICKER */
+    .date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .date-box { background: var(--brand-light); border-radius: 12px; padding: 12px; cursor: pointer; border: 2px solid transparent; transition: border-color .15s; }
+    .date-box.selected { border-color: var(--brand); }
+    .date-box-label { font-size: 10px; font-weight: 800; color: var(--brand); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+    .date-box-value { font-size: 16px; font-weight: 800; color: #111; }
+    .date-box-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+    .date-input { width: 100%; height: 46px; border: 1.5px solid #e5e7eb; border-radius: 12px; padding: 0 14px; font-size: 15px; color: #111; background: #f9fafb; margin-bottom: 10px; }
+    .date-input:focus { outline: none; border-color: var(--brand); background: #fff; }
+
+    /* OSPITI */
+    .ospiti-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+    .ospiti-row:last-child { border-bottom: none; }
+    .ospiti-label { font-size: 14px; font-weight: 600; color: #111; }
+    .ospiti-sub { font-size: 12px; color: #9ca3af; }
+    .ospiti-controls { display: flex; align-items: center; gap: 12px; }
+    .ospiti-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--brand); background: #fff; color: var(--brand); font-size: 20px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+    .ospiti-btn:hover { background: var(--brand); color: #fff; }
+    .ospiti-btn:disabled { border-color: #e5e7eb; color: #d1d5db; cursor: not-allowed; }
+    .ospiti-num { font-size: 18px; font-weight: 800; min-width: 28px; text-align: center; }
+
+    /* CAMERE */
+    .camera-card { border: 2px solid #e5e7eb; border-radius: 14px; padding: 14px; margin-bottom: 10px; cursor: pointer; transition: all .15s; position: relative; overflow: hidden; }
+    .camera-card.selected { border-color: var(--brand); background: var(--brand-light); }
+    .camera-card.non-disponibile { opacity: .5; cursor: not-allowed; }
+    .camera-img { width: 100%; height: 160px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; background: var(--brand-light); display: flex; align-items: center; justify-content: center; font-size: 40px; overflow: hidden; }
+    .camera-img img { width: 100%; height: 100%; object-fit: cover; }
+    .camera-nome { font-size: 16px; font-weight: 800; color: #111; }
+    .camera-tipo { font-size: 12px; color: var(--brand); font-weight: 600; margin-top: 2px; }
+    .camera-desc { font-size: 13px; color: #6b7280; margin-top: 6px; line-height: 1.5; }
+    .camera-info { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .camera-badge { background: #f3f4f6; border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; color: #374151; }
+    .camera-prezzo { font-size: 22px; font-weight: 800; color: var(--brand); margin-top: 10px; }
+    .camera-prezzo-sub { font-size: 12px; color: #9ca3af; font-weight: 500; }
+    .camera-sel-badge { position: absolute; top: 12px; right: 12px; background: var(--brand); color: #fff; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 800; display: none; }
+    .camera-card.selected .camera-sel-badge { display: block; }
+
+    /* RIEPILOGO */
+    .riepilogo-box { background: var(--brand-light); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+    .ries-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; color: #374151; }
+    .ries-row.total { font-size: 18px; font-weight: 800; color: #111; border-top: 1px solid #c5dde7; padding-top: 8px; margin-top: 6px; margin-bottom: 0; }
+
+    /* FORM */
+    .form-field { margin-bottom: 12px; }
+    .form-label { font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 5px; display: block; }
+    .form-input { width: 100%; height: 46px; border: 1.5px solid #e5e7eb; border-radius: 12px; padding: 0 14px; font-size: 15px; color: #111; background: #f9fafb; }
+    .form-input:focus { outline: none; border-color: var(--brand); background: #fff; }
+    .form-textarea { width: 100%; border: 1.5px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; font-size: 15px; color: #111; background: #f9fafb; min-height: 80px; resize: none; font-family: inherit; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* BOTTONI */
+    .btn-primary { width: 100%; height: 52px; border: none; border-radius: 14px; background: var(--brand); color: #fff; font-size: 16px; font-weight: 800; cursor: pointer; transition: opacity .15s; }
+    .btn-primary:hover { opacity: .9; }
+    .btn-primary:disabled { background: #d1d5db; cursor: not-allowed; }
+    .btn-ghost { width: 100%; height: 48px; border: 1.5px solid #e5e7eb; border-radius: 14px; background: #fff; color: #374151; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+
+    /* CTA STICKY */
+    .cta-sticky { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); z-index: 100; box-shadow: 0 -4px 20px rgba(0,0,0,.08); }
+    .cta-inner { display: flex; gap: 10px; align-items: center; max-width: 480px; margin: 0 auto; }
+    .cta-info { flex: 1; }
+    .cta-prezzo { font-size: 20px; font-weight: 800; color: var(--brand); }
+    .cta-label { font-size: 11px; color: #9ca3af; }
+
+    /* SUCCESSO */
+    .success-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; padding: 32px 20px; gap: 14px; }
+    .success-icon { font-size: 64px; }
+    .success-title { font-size: 24px; font-weight: 800; color: #111; }
+    .success-sub { font-size: 15px; color: #6b7280; line-height: 1.6; }
+
+    /* LOADER */
+    .loader { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 14px; }
+    .spinner { width: 44px; height: 44px; border: 4px solid var(--brand-light); border-top-color: var(--brand); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .footer { text-align: center; padding: 20px 16px 80px; font-size: 12px; color: #9ca3af; }
+    .footer a { color: var(--brand); text-decoration: none; }
+
+    @media (min-width: 480px) {
+      body { display: flex; flex-direction: column; align-items: center; }
+      .hero, .steps, .section, .cta-sticky, .footer { max-width: 480px; width: 100%; }
+      .section { margin-left: auto; margin-right: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="root">
+  <div class="loader"><div class="spinner"></div><div style="font-size:14px;color:#9ca3af;">Caricamento...</div></div>
+</div>
+
+<div class="cta-sticky" id="cta-sticky" style="display:none;">
+  <div class="cta-inner">
+    <div class="cta-info">
+      <div class="cta-prezzo" id="cta-prezzo">€ --</div>
+      <div class="cta-label" id="cta-label">Seleziona camera e date</div>
+    </div>
+    <button class="btn-primary" id="cta-btn" style="width:auto;padding:0 24px;" onclick="avanti()">Avanti →</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function() {
+  const SUPA_URL = 'https://cuhcscpvhypoaplcmtjk.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1aGNzY3B2aHlwb2FwbGNtdGprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MjY4MjgsImV4cCI6MjA3OTQwMjgyOH0.q9zAs0oh8F1-whtORHBIORF5jIn1NTS3LvSMWleP0a0';
+  const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+  const params = new URLSearchParams(window.location.search);
+  const azId = params.get('az');
+  const root = document.getElementById('root');
+
+  let azienda = null, camere = [], cfg = null;
+  let step = 1; // 1=date+ospiti, 2=camere, 3=dati, 4=conferma
+  let checkin = '', checkout = '', adulti = 2, bambini = 0;
+  let cameraSelezionata = null;
+
+  if (!azId) { showError('Link non valido', 'Manca il codice hotel.'); return; }
+
+  init();
+
+  async function init() {
+    const [azRes, cfgRes] = await Promise.all([
+      supa.from('aziende_pubbliche').select('*').eq('id', azId).maybeSingle(),
+      supa.from('hotel_configurazione').select('*').eq('azienda_id', azId).maybeSingle(),
+    ]);
+    if (!azRes.data) { showError('Hotel non trovato', 'Il link potrebbe non essere valido.'); return; }
+    azienda = azRes.data;
+    cfg = cfgRes.data || {};
+
+    // Brand color
+    if (azienda.colore_brand) document.documentElement.style.setProperty('--brand', azienda.colore_brand);
+    document.title = 'Prenota — ' + azienda.nome;
+
+    // Date default
+    const oggi = new Date();
+    const dom = new Date(oggi); dom.setDate(dom.getDate() + 1);
+    const dopo = new Date(oggi); dopo.setDate(dopo.getDate() + 2);
+    checkin = toISO(dom);
+    checkout = toISO(dopo);
+
+    renderStep1();
   }
-]
+
+  // ═══════════════════════════════════════
+  // STEP 1 — Date e ospiti
+  // ═══════════════════════════════════════
+  function renderStep1() {
+    step = 1;
+    document.getElementById('cta-sticky').style.display = '';
+    document.getElementById('cta-btn').textContent = 'Cerca camere →';
+    aggiornaCtaLabel();
+
+    root.innerHTML = buildHero() + buildSteps() + `
+      <div class="section">
+        <div class="section-title">📅 Quando vuoi soggiornare?</div>
+        <div class="date-grid">
+          <div class="date-box selected" id="box-checkin">
+            <div class="date-box-label">Check-in</div>
+            <div class="date-box-value" id="val-checkin">${formatData(checkin)}</div>
+            <div class="date-box-sub">${getDayName(checkin)}</div>
+          </div>
+          <div class="date-box" id="box-checkout">
+            <div class="date-box-label">Check-out</div>
+            <div class="date-box-value" id="val-checkout">${formatData(checkout)}</div>
+            <div class="date-box-sub">${getDayName(checkout)}</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="form-label">Check-in</label>
+            <input type="date" class="date-input" id="inp-checkin" value="${checkin}" min="${toISO(new Date())}">
+          </div>
+          <div>
+            <label class="form-label">Check-out</label>
+            <input type="date" class="date-input" id="inp-checkout" value="${checkout}">
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">👥 Quanti ospiti?</div>
+        <div class="ospiti-row">
+          <div><div class="ospiti-label">Adulti</div><div class="ospiti-sub">Dai 13 anni</div></div>
+          <div class="ospiti-controls">
+            <button class="ospiti-btn" onclick="cambiaOspiti('adulti',-1)" id="btn-ad-min">−</button>
+            <span class="ospiti-num" id="num-adulti">${adulti}</span>
+            <button class="ospiti-btn" onclick="cambiaOspiti('adulti',1)">+</button>
+          </div>
+        </div>
+        <div class="ospiti-row">
+          <div><div class="ospiti-label">Bambini</div><div class="ospiti-sub">0-12 anni</div></div>
+          <div class="ospiti-controls">
+            <button class="ospiti-btn" onclick="cambiaOspiti('bambini',-1)" id="btn-bam-min">−</button>
+            <span class="ospiti-num" id="num-bambini">${bambini}</span>
+            <button class="ospiti-btn" onclick="cambiaOspiti('bambini',1)">+</button>
+          </div>
+        </div>
+        ${adulti > 4 ? `<div style="background:#fff7ed;border-radius:10px;padding:10px 12px;font-size:12px;color:#c2410c;margin-top:10px;">ℹ️ Per gruppi numerosi potrebbe essere necessaria più di una camera. Contattaci per assistenza.</div>` : ''}
+      </div>
+    `;
+
+    // Listeners date
+    document.getElementById('inp-checkin').addEventListener('change', e => {
+      checkin = e.target.value;
+      document.getElementById('val-checkin').textContent = formatData(checkin);
+      document.getElementById('box-checkin').querySelector('.date-box-sub').textContent = getDayName(checkin);
+      // Auto-aggiorna checkout se necessario
+      if (checkout <= checkin) {
+        const d = new Date(checkin); d.setDate(d.getDate() + 1);
+        checkout = toISO(d);
+        document.getElementById('inp-checkout').value = checkout;
+        document.getElementById('val-checkout').textContent = formatData(checkout);
+        document.getElementById('box-checkout').querySelector('.date-box-sub').textContent = getDayName(checkout);
+      }
+      aggiornaCtaLabel();
+    });
+
+    document.getElementById('inp-checkout').addEventListener('change', e => {
+      checkout = e.target.value;
+      document.getElementById('val-checkout').textContent = formatData(checkout);
+      document.getElementById('box-checkout').querySelector('.date-box-sub').textContent = getDayName(checkout);
+      aggiornaCtaLabel();
+    });
+  }
+
+  window.cambiaOspiti = function(tipo, delta) {
+    if (tipo === 'adulti') {
+      adulti = Math.max(1, adulti + delta);
+      document.getElementById('num-adulti').textContent = adulti;
+      document.getElementById('btn-ad-min').disabled = adulti <= 1;
+    } else {
+      bambini = Math.max(0, bambini + delta);
+      document.getElementById('num-bambini').textContent = bambini;
+      document.getElementById('btn-bam-min').disabled = bambini <= 0;
+    }
+    aggiornaCtaLabel();
+  };
+
+  // ═══════════════════════════════════════
+  // STEP 2 — Selezione camera
+  // ═══════════════════════════════════════
+  async function renderStep2() {
+    step = 2;
+    root.innerHTML = buildHero() + buildSteps() + `<div class="loader"><div class="spinner"></div><div style="font-size:13px;color:#9ca3af;margin-top:8px;">Verifica disponibilità...</div></div>`;
+
+    // Carica camere disponibili
+    const { data: camereDB } = await supa
+      .from('hotel_camere')
+      .select('*')
+      .eq('azienda_id', azId)
+      .eq('attiva', true)
+      .order('prezzo_base');
+
+    camere = camereDB || [];
+    const notti = calcolaNotti(checkin, checkout);
+
+    // Verifica disponibilità per ogni camera
+    const prenotazioni = await supa
+      .from('hotel_prenotazioni')
+      .select('camera_id')
+      .eq('azienda_id', azId)
+      .not('stato', 'in', '(cancellata,noshow)')
+      .or(`data_checkin.lt.${checkout},data_checkout.gt.${checkin}`);
+
+    const occupate = new Set((prenotazioni.data || []).map(p => p.camera_id));
+
+    root.innerHTML = buildHero() + buildSteps() + `
+      <div class="section">
+        <div class="section-title">🛏️ Scegli la camera</div>
+        <div style="font-size:13px;color:#6b7280;margin-bottom:14px;">
+          📅 ${formatData(checkin)} → ${formatData(checkout)} · ${notti} nott${notti===1?'e':'i'} · 👥 ${adulti} adult${adulti===1?'o':'i'}${bambini>0?` + ${bambini} bambin${bambini===1?'o':'i'}`:''}
+        </div>
+        ${!camere.length ? '<div style="text-align:center;padding:30px;color:#9ca3af;">Nessuna camera disponibile per queste date.</div>' :
+          camere.map(c => {
+            const disp = !occupate.has(c.id);
+            const prezzoTot = (c.prezzo_base || 0) * notti;
+            return `<div class="camera-card${cameraSelezionata?.id === c.id ? ' selected' : ''}${!disp ? ' non-disponibile' : ''}" onclick="${disp ? `selezionaCamera('${c.id}')` : ''}">
+              <div class="camera-sel-badge">✅ Selezionata</div>
+              <div class="camera-img">${c.foto_url ? `<img src="${esc(c.foto_url)}" alt="${esc(c.nome)}">` : '🛏️'}</div>
+              <div class="camera-nome">${esc(c.nome)}</div>
+              ${c.tipologia ? `<div class="camera-tipo">${esc(c.tipologia)}</div>` : ''}
+              ${c.descrizione ? `<div class="camera-desc">${esc(c.descrizione.substring(0,100))}${c.descrizione.length>100?'...':''}</div>` : ''}
+              <div class="camera-info">
+                ${c.ospiti_max ? `<span class="camera-badge">👥 Max ${c.ospiti_max} ospiti</span>` : ''}
+                ${c.mq ? `<span class="camera-badge">📐 ${c.mq} m²</span>` : ''}
+                ${!disp ? `<span class="camera-badge" style="background:#fee2e2;color:#991b1b;">❌ Non disponibile</span>` : ''}
+              </div>
+              <div class="camera-prezzo">€ ${prezzoTot.toFixed(2)} <span class="camera-prezzo-sub">totale · €${(c.prezzo_base||0).toFixed(2)}/notte</span></div>
+            </div>`;
+          }).join('')
+        }
+      </div>
+      <button class="btn-ghost" style="margin:0 12px 80px;width:calc(100% - 24px);" onclick="renderStep1()">← Modifica date</button>
+    `;
+
+    document.getElementById('cta-btn').textContent = 'Continua →';
+    aggiornaCtaPrezzo();
+  }
+
+  window.selezionaCamera = function(cameraId) {
+    cameraSelezionata = camere.find(c => c.id === cameraId);
+    document.querySelectorAll('.camera-card').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.camera-sel-badge').forEach(el => el.style.display = 'none');
+    const card = document.querySelector(`[onclick="selezionaCamera('${cameraId}')"]`);
+    if (card) {
+      card.classList.add('selected');
+      card.querySelector('.camera-sel-badge').style.display = 'block';
+    }
+    aggiornaCtaPrezzo();
+  };
+
+  // ═══════════════════════════════════════
+  // STEP 3 — Dati ospite
+  // ═══════════════════════════════════════
+  function renderStep3() {
+    step = 3;
+    const notti = calcolaNotti(checkin, checkout);
+    const totale = (cameraSelezionata.prezzo_base || 0) * notti;
+
+    root.innerHTML = buildHero() + buildSteps() + `
+      <div class="section">
+        <div class="section-title">📋 Riepilogo</div>
+        <div class="riepilogo-box">
+          <div class="ries-row"><span>🛏️ ${esc(cameraSelezionata.nome)}</span><span></span></div>
+          <div class="ries-row"><span>📅 ${formatData(checkin)} → ${formatData(checkout)}</span><span>${notti} nott${notti===1?'e':'i'}</span></div>
+          <div class="ries-row"><span>👥 Ospiti</span><span>${adulti} adult${adulti===1?'o':'i'}${bambini>0?` + ${bambini} bambin${bambini===1?'o':'i'}`:''}</span></div>
+          <div class="ries-row"><span>💶 Prezzo/notte</span><span>€${(cameraSelezionata.prezzo_base||0).toFixed(2)}</span></div>
+          <div class="ries-row total"><span>Totale</span><span>€${totale.toFixed(2)}</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">👤 I tuoi dati</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Nome *</label>
+            <input class="form-input" id="f-nome" placeholder="Mario" autocomplete="given-name">
+          </div>
+          <div class="form-field">
+            <label class="form-label">Cognome *</label>
+            <input class="form-input" id="f-cognome" placeholder="Rossi" autocomplete="family-name">
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Email *</label>
+          <input class="form-input" id="f-email" type="email" placeholder="mario@email.it" autocomplete="email">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Telefono</label>
+          <input class="form-input" id="f-tel" type="tel" placeholder="+39 333 1234567" autocomplete="tel">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Orario arrivo previsto</label>
+          <input class="form-input" id="f-arrivo" type="time" value="14:00">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Richieste speciali</label>
+          <textarea class="form-textarea" id="f-note" placeholder="Allergie, preferenze, esigenze particolari..."></textarea>
+        </div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5;">
+          Confermando la prenotazione accetti la nostra politica di cancellazione.
+          ${cfg.politica_cancellazione ? cfg.politica_cancellazione : ''}
+        </div>
+      </div>
+      <button class="btn-ghost" style="margin:0 12px 80px;width:calc(100% - 24px);" onclick="renderStep2()">← Cambia camera</button>
+    `;
+
+    document.getElementById('cta-btn').textContent = 'Conferma prenotazione →';
+    aggiornaCtaPrezzo();
+  }
+
+  // ═══════════════════════════════════════
+  // CONFERMA PRENOTAZIONE
+  // ═══════════════════════════════════════
+  async function confermaPrenotazione() {
+    const nome = document.getElementById('f-nome')?.value.trim();
+    const cognome = document.getElementById('f-cognome')?.value.trim();
+    const email = document.getElementById('f-email')?.value.trim();
+    const tel = document.getElementById('f-tel')?.value.trim();
+    const arrivo = document.getElementById('f-arrivo')?.value;
+    const note = document.getElementById('f-note')?.value.trim();
+
+    if (!nome || !cognome || !email) {
+      alert('Compila nome, cognome ed email per procedere.');
+      return;
+    }
+
+    const btn = document.getElementById('cta-btn');
+    btn.disabled = true;
+    btn.textContent = 'Conferma in corso...';
+
+    const notti = calcolaNotti(checkin, checkout);
+    const totale = (cameraSelezionata.prezzo_base || 0) * notti;
+    const tokenPubblico = 'bk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
+
+    try {
+      const { data, error } = await supa.from('hotel_prenotazioni').insert({
+        azienda_id:          azId,
+        camera_id:           cameraSelezionata.id,
+        ospite_nome:         nome,
+        ospite_cognome:      cognome,
+        ospite_email:        email,
+        ospite_telefono:     tel || null,
+        data_checkin:        checkin,
+        data_checkout:       checkout,
+        adulti:              adulti,
+        bambini:             bambini,
+        stato:               'confermata',
+        canale:              'online',
+        prezzo_notte:        cameraSelezionata.prezzo_base || 0,
+        prezzo_totale:       totale,
+        // notti calcolato automaticamente dal DB
+        richieste_speciali:  note || null,
+        ora_arrivo_prevista: arrivo || null,
+        token_pubblico:      tokenPubblico,
+        reminder_checkin_inviato:  false,
+        reminder_checkout_inviato: false,
+        post_checkout_inviato:     false,
+      }).select('id').single();
+
+      if (error) throw error;
+
+      // Invia notifica (fire and forget)
+      supa.functions.invoke('hotel-notifica-prenotazione', { body: { id: data.id } }).catch(() => {});
+
+      renderSuccesso(nome, tokenPubblico);
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = 'Conferma prenotazione →';
+      alert('Errore nella prenotazione: ' + (e.message || 'Riprova o contattaci.'));
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // SUCCESSO
+  // ═══════════════════════════════════════
+  function renderSuccesso(nome, token) {
+    document.getElementById('cta-sticky').style.display = 'none';
+    const linkBiglietto = `https://hotel.ristoflow-ai.com/hotel-prenotazione.html?t=${token}`;
+    root.innerHTML = buildHero() + `
+      <div class="success-page">
+        <div class="success-icon">🎉</div>
+        <div class="success-title">Prenotazione confermata!</div>
+        <div class="success-sub">Grazie ${esc(nome)}!<br>Ti abbiamo inviato una email di conferma con tutti i dettagli.</div>
+        <a href="${linkBiglietto}" style="display:block;width:100%;max-width:300px;text-align:center;background:var(--brand);color:#fff;border-radius:14px;padding:16px;text-decoration:none;font-size:15px;font-weight:800;">
+          📋 Visualizza la prenotazione
+        </a>
+        <a href="https://hotel.ristoflow-ai.com/booking.html?az=${azId}" style="display:block;width:100%;max-width:300px;text-align:center;background:#f3f4f6;color:#374151;border-radius:14px;padding:14px;text-decoration:none;font-size:14px;font-weight:700;margin-top:4px;">
+          ← Torna all'hotel
+        </a>
+      </div>
+      <div class="footer">Powered by <a href="https://ristoflow-ai.com">Ristoflow Hotel</a></div>
+    `;
+  }
+
+  // ═══════════════════════════════════════
+  // NAVIGAZIONE
+  // ═══════════════════════════════════════
+  window.avanti = async function() {
+    if (step === 1) {
+      if (!checkin || !checkout || checkout <= checkin) {
+        alert('Seleziona date valide.');
+        return;
+      }
+      await renderStep2();
+    } else if (step === 2) {
+      if (!cameraSelezionata) {
+        alert('Seleziona una camera per continuare.');
+        return;
+      }
+      renderStep3();
+    } else if (step === 3) {
+      await confermaPrenotazione();
+    }
+  };
+
+  // ═══════════════════════════════════════
+  // COMPONENTI
+  // ═══════════════════════════════════════
+  function buildHero() {
+    return `<div class="hero">
+      ${azienda.cover_url ? `<img src="${esc(azienda.cover_url)}" alt="">` : ''}
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <div class="hero-nome">${esc(azienda.nome || 'Hotel')}</div>
+        <div class="hero-sub">🏨 Prenotazione online</div>
+      </div>
+    </div>`;
+  }
+
+  function buildSteps() {
+    const steps = ['Date', 'Camera', 'Dati'];
+    return `<div class="steps">` + steps.map((s, i) => {
+      const n = i + 1;
+      const cls = n < step ? 'done' : n === step ? 'active' : '';
+      const line = i < steps.length - 1 ? `<div class="step-line${n < step ? ' done' : ''}"></div>` : '';
+      return `<div class="step ${cls}"><div class="step-num">${n < step ? '✓' : n}</div>${s}</div>${line}`;
+    }).join('') + `</div>`;
+  }
+
+  function aggiornaCtaLabel() {
+    const notti = calcolaNotti(checkin, checkout);
+    const el = document.getElementById('cta-label');
+    if (el) el.textContent = notti > 0 ? `${notti} nott${notti===1?'e':'i'} · ${adulti} adult${adulti===1?'o':'i'}` : 'Seleziona date valide';
+  }
+
+  function aggiornaCtaPrezzo() {
+    const el = document.getElementById('cta-prezzo');
+    if (!el) return;
+    if (cameraSelezionata) {
+      const notti = calcolaNotti(checkin, checkout);
+      el.textContent = '€ ' + ((cameraSelezionata.prezzo_base || 0) * notti).toFixed(2);
+      document.getElementById('cta-label').textContent = esc(cameraSelezionata.nome);
+    } else {
+      el.textContent = 'Scegli camera';
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // UTILS
+  // ═══════════════════════════════════════
+  function calcolaNotti(ci, co) {
+    if (!ci || !co) return 0;
+    return Math.round((new Date(co) - new Date(ci)) / 86400000);
+  }
+  function toISO(d) {
+    return d.toISOString().slice(0,10);
+  }
+  function formatData(d) {
+    if (!d) return '--';
+    const p = d.split('-');
+    return `${p[2]}/${p[1]}/${p[0]}`;
+  }
+  function getDayName(d) {
+    if (!d) return '';
+    const giorni = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+    const p = d.split('-').map(Number);
+    return giorni[new Date(p[0],p[1]-1,p[2]).getDay()];
+  }
+  function esc(v) {
+    return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+  function showError(t, s) {
+    root.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:32px;gap:12px;"><div style="font-size:56px;">😟</div><div style="font-size:20px;font-weight:800;">${esc(t)}</div><div style="font-size:14px;color:#6b7280;">${esc(s)}</div></div>`;
+  }
+
+})();
+</script>
+</body>
+</html>
