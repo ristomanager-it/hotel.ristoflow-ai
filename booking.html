@@ -558,7 +558,7 @@
       if (modalitaPagamento !== 'gratuita' && stripeInstance && cardEl) {
         // Stripe payment intent via Edge Function
         var caparra = modalitaPagamento==='caparra' ? Math.round(tot*capPerc/100*100)/100 : tot;
-        var piRes = await supa.functions.invoke('Hotel-crea-payment-intent', {
+        var piRes = await supa.functions.invoke('hotel-crea-payment-intent', {
           body: { azienda_id: azId, importo: caparra, token: tokens[0], ospite: nome+' '+cognome }
         });
         if (piRes.error) throw new Error(piRes.error.message || 'Errore pagamento');
