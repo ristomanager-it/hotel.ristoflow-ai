@@ -126,6 +126,45 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// ── Ristoflow Analytics ────────────────────────────────────
+(function(){
+  var SID = sessionStorage.getItem('rf_sid') || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+  sessionStorage.setItem('rf_sid', SID);
+  window._rfTrack = function(tipo, elemento, extra) {
+    var p = new URLSearchParams(location.search);
+    var payload = Object.assign({
+      azienda_id: p.get('az') || null,
+      sede_id: null,
+      pagina: 'booking-hotel',
+      pagina_id: p.get('az') || null,
+      tipo: tipo,
+      elemento: elemento || null,
+      referrer: document.referrer || null,
+      utm_source: p.get('utm_source'),
+      utm_medium: p.get('utm_medium'),
+      utm_campaign: p.get('utm_campaign'),
+      device: /Mobi/.test(navigator.userAgent) ? 'mobile' : 'desktop',
+      session_id: SID
+    }, extra || {});
+    fetch('https://cuhcscpvhypoaplcmtjk.supabase.co/functions/v1/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(function(){});
+  };
+  window._rfTrack('view', 'booking_hotel', { completato: false });
+  // Abbandono
+  var _completata = false;
+  window._rfSetCompletata = function() { _completata = true; };
+  window.addEventListener('beforeunload', function() {
+    if (_completata) return;
+    window._rfTrack('abbandono', 'booking_abbandonato', {
+      step: window._rfStep || 1,
+      completato: false
+    });
+  });
+})();
+</script>
 (function(){
   var SUPA_URL = 'https://cuhcscpvhypoaplcmtjk.supabase.co';
   var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1aGNzY3B2aHlwb2FwbGNtdGprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MjY4MjgsImV4cCI6MjA3OTQwMjgyOH0.q9zAs0oh8F1-whtORHBIORF5jIn1NTS3LvSMWleP0a0';
@@ -179,6 +218,7 @@
     }
     document.title = 'Prenota — ' + (cfg.nome_pubblico || azienda.nome || 'Hotel');
     document.getElementById('cta-bar').style.display = '';
+    window._rfTrack && window._rfTrack('step', 'hotel_caricato', { step: 1, valore: azienda.nome || azId });
     renderStep1();
   }
 
@@ -279,6 +319,8 @@
   // ═══════════════════════════════════════════════
   async function renderStep2() {
     step = 2;
+    window._rfStep = 2;
+    window._rfTrack && window._rfTrack('step', 'step2_camere', { step: 2, valore: checkin + ' → ' + checkout + ' · ' + notti() + 'n' });
     root.innerHTML = buildHero() + buildSteps() + '<div class="page-loader" style="min-height:200px"><div class="spinner"></div><div style="font-size:13px;color:#6b7280">Verifico disponibilità...</div></div>';
 
     var nn = notti();
@@ -359,6 +401,7 @@
     var c = camere.find(function(x){ return x.id===id; });
     if (!c) return;
     camereSelezionate.push(c);
+    window._rfTrack && window._rfTrack('click', 'seleziona_camera', { step: 2, valore: c.nome + ' €' + c.prezzo_base });
     renderStep2();
   };
 
@@ -393,6 +436,8 @@
   // ═══════════════════════════════════════════════
   function renderStep3() {
     step = 3;
+    window._rfStep = 3;
+    window._rfTrack && window._rfTrack('step', 'step3_dati', { step: 3, valore: camereSelezionate.map(function(c){return c.nome;}).join('+') });
     var nn = notti();
     var tot = totaleSelezionato();
     var h = buildHero() + buildSteps();
@@ -437,6 +482,9 @@
   // ═══════════════════════════════════════════════
   function renderStep4() {
     step = 4;
+    window._rfStep = 4;
+    var tot4 = totaleSelezionato();
+    window._rfTrack && window._rfTrack('step', 'step4_pagamento', { step: 4, valore: String(tot4.toFixed(2)) });
     var tot = totaleSelezionato();
     var caparra = modalitaPagamento==='caparra' ? Math.round(tot * capPerc / 100 * 100)/100 : tot;
     var h = buildHero() + buildSteps();
@@ -602,6 +650,8 @@
   // SUCCESSO
   // ═══════════════════════════════════════════════
   function renderSuccesso(nome, token) {
+    window._rfSetCompletata && window._rfSetCompletata();
+    window._rfTrack && window._rfTrack('submit', 'prenotazione_completata', { step: step, completato: true, valore: notti() + 'n · ' + camereSelezionate.map(function(c){return c.nome;}).join('+') });
     document.getElementById('cta-bar').style.display='none';
     var linkPren = 'https://hotel.ristoflow-ai.com/hotel-prenotazione.html?t='+token;
     var h = buildHero();
