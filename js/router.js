@@ -6,7 +6,7 @@ import { initMenu } from "./menu.js";
 ============================================================ */
 const routes = {
   login:                  () => import("./views/login.js"),
-  home:                   () => import("./views/home.js"),
+  home:                   () => import("./views/home.js?v=2"),
   "hotel-camere":         () => import("./views/hotel-camere.js"),
   "hotel-prenotazioni":   () => import("./views/hotel-prenotazioni.js"),
   "hotel-calendario":     () => import("./views/hotel-calendario.js"),
