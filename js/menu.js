@@ -282,6 +282,10 @@ async function inviaTony(testo) {
 
   try {
     const { data:{ session } } = await supabase.auth.getSession();
+    console.log("TONY: token", session?.access_token ? "OK" : "MANCANTE");
+    console.log("TONY: azienda_id", window.state?.azienda?.id);
+    console.log("TONY: messages", tonyHistory.slice(-10));
+
     const res = await fetch(EDGE_TONY, {
       method: "POST",
       headers: {
@@ -297,7 +301,9 @@ async function inviaTony(testo) {
       }),
     });
 
-    const data     = await res.json();
+    console.log("TONY: status", res.status);
+    const data = await res.json();
+    console.log("TONY: response", data);
     const risposta = data.reply || data.risposta || data.content?.[0]?.text || "Nessuna risposta";
     document.getElementById(loadId)?.remove();
     tonyHistory.push({ role:"assistant", content: risposta });
@@ -310,7 +316,8 @@ async function inviaTony(testo) {
         azienda_id: az.id, contenuto: testo, tipo: "hotel",
       });
     }
-  } catch {
+  } catch(e) {
+    console.error("TONY ERROR:", e);
     document.getElementById(loadId)?.remove();
     aggiungiMsg("Errore di connessione. Riprova.", "tony");
   }
