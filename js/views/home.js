@@ -84,17 +84,45 @@ export async function render(container) {
     <div style="text-align:right;margin-bottom:24px;">
       <button class="btn btn-primary" id="btn-nuova-pren">+ Nuova prenotazione</button>
     </div>
+
+    <!-- TONY AI -->
+    <div class="tony-wrap" id="tony-container">
+      <div class="tony-header">
+        <div class="tony-avatar">🤖</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;">Tony — Assistente Hotel</div>
+          <div style="font-size:11px;color:#94a3b8;">AI operativa · aggiornato ora</div>
+        </div>
+        <button id="tony-memoria-btn" style="margin-left:auto;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">🧠 Memoria</button>
+        <button id="tony-close" style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">✕</button>
+      </div>
+      <div class="tony-msgs" id="tony-msgs">
+        <div class="tony-msg tony" id="tony-benvenuto">⏳ Caricamento...</div>
+      </div>
+      <div id="tony-suggerimenti" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+      <div class="tony-input-wrap">
+        <input class="tony-input" id="tony-input" type="text" placeholder="Chiedi qualcosa...">
+        <button class="tony-send" id="tony-send">➤</button>
+      </div>
+    </div>
   `;
 
   container.querySelector("#btn-nuova-pren").onclick = () => {
     window.location.hash = "#/hotel-prenotazioni?new=1";
   };
 
+  document.getElementById('tony-close')?.addEventListener('click', () => {
+    document.getElementById('tony-container').style.display = 'none';
+  });
+
   // Carica tutto in parallelo
   await Promise.all([
     caricaMeteo(az),
     caricaDashboard(aziendaId),
+    caricaTony(aziendaId),
   ]);
+
+  initTony(aziendaId);
 }
 
 // ════════════════════════════════════════════════════════════════
