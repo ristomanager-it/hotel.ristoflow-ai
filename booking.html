@@ -642,7 +642,7 @@
 
       // Invia WA di conferma con link guest (fire & forget)
       try {
-        var linkGuest = 'https://hotel.ristoflow-ai.com/public/guest.html?token=' + tokens[0];
+        var linkGuest = 'https://hotel.ristoflow-ai.com/hotel-prenotazione.html?t=' + tokens[0];
         var telPulito = tel ? tel.replace(/\D/g,'').replace(/^0/,'') : null;
         if (telPulito) {
           var msgWA = 'Ciao ' + nome + ' ' + cognome + '! 🎉\n\n' +
@@ -678,7 +678,7 @@
     window._rfSetCompletata && window._rfSetCompletata();
     window._rfTrack && window._rfTrack('submit', 'prenotazione_completata', { step: step, completato: true, valore: notti() + 'n · ' + camereSelezionate.map(function(c){return c.nome;}).join('+') });
     document.getElementById('cta-bar').style.display='none';
-    var linkGuest = 'https://hotel.ristoflow-ai.com/public/guest.html?token='+token;
+    var linkGuest = 'https://hotel.ristoflow-ai.com/hotel-prenotazione.html?t='+token;
     var h = buildHero();
     h += '<div class="section-card" style="text-align:center;padding:32px 16px;">';
     h += '<div style="font-size:64px;margin-bottom:16px">🎉</div>';
