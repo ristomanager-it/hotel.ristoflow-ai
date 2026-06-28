@@ -271,8 +271,9 @@ async function inviaTony(testo) {
   aggiungiMsg(testo, "user");
   tonyHistory.push({ role:"user", content: testo });
 
+  const panel = document.getElementById("tony-panel");
+  const msgs = panel?.querySelector("#tony-msgs");
   const loadId = "tl-" + Date.now();
-  const msgs = document.getElementById("tony-msgs");
   const loadEl = document.createElement("div");
   loadEl.id = loadId;
   loadEl.style.cssText = "padding:10px 14px;border-radius:14px;font-size:13px;background:#f0f9ff;color:#0f172a;align-self:flex-start;border-bottom-left-radius:4px;max-width:85%;";
@@ -324,7 +325,8 @@ async function inviaTony(testo) {
 }
 
 function aggiungiMsg(testo, tipo) {
-  const msgs = document.getElementById("tony-msgs");
+  const panel = document.getElementById("tony-panel");
+  const msgs = panel?.querySelector("#tony-msgs") || document.getElementById("tony-msgs");
   if (!msgs) return;
   const div = document.createElement("div");
   div.style.cssText = tipo === "user"
