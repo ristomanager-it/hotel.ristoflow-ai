@@ -639,6 +639,31 @@
       }
 
       renderSuccesso(nome, tokens[0]);
+
+      // Invia WA di conferma con link guest (fire & forget)
+      try {
+        var linkGuest = 'https://hotel.ristoflow-ai.com/public/guest.html?token=' + tokens[0];
+        var telPulito = tel ? tel.replace(/\D/g,'').replace(/^0/,'') : null;
+        if (telPulito) {
+          var msgWA = 'Ciao ' + nome + ' ' + cognome + '! 🎉\n\n' +
+            '✅ La tua prenotazione è *confermata*.\n\n' +
+            '📅 Check-in: *' + checkin + '*\n' +
+            '📅 Check-out: *' + checkout + '*\n' +
+            '🛏️ Camera: *' + camereSelezionate.map(function(c){return c.nome;}).join(', ') + '*\n\n' +
+            '📋 Gestisci la tua prenotazione:\n' + linkGuest + '\n\n' +
+            '_Salva il link sul telefono per accedervi sempre!_';
+          await supa.functions.invoke('whatsapp-send-ts', {
+            body: {
+              to: '39' + telPulito,
+              type: 'text',
+              text: msgWA,
+              azienda_id: azId
+            }
+          });
+        }
+      } catch(waErr) {
+        console.warn('WA conferma non inviato:', waErr);
+      }
     } catch(e) {
       btn.disabled = false;
       btn.textContent = modalitaPagamento!=='gratuita'?'💳 Riprova':'Conferma prenotazione →';
@@ -653,15 +678,30 @@
     window._rfSetCompletata && window._rfSetCompletata();
     window._rfTrack && window._rfTrack('submit', 'prenotazione_completata', { step: step, completato: true, valore: notti() + 'n · ' + camereSelezionate.map(function(c){return c.nome;}).join('+') });
     document.getElementById('cta-bar').style.display='none';
-    var linkPren = 'https://hotel.ristoflow-ai.com/hotel-prenotazione.html?t='+token;
+    var linkGuest = 'https://hotel.ristoflow-ai.com/public/guest.html?token='+token;
     var h = buildHero();
     h += '<div class="section-card" style="text-align:center;padding:32px 16px;">';
     h += '<div style="font-size:64px;margin-bottom:16px">🎉</div>';
     h += '<div style="font-size:24px;font-weight:800;margin-bottom:8px">Prenotazione confermata!</div>';
-    h += '<div style="font-size:15px;color:#6b7280;line-height:1.6;margin-bottom:24px">Grazie '+escH(nome)+'!<br>Ti abbiamo inviato la conferma via email.</div>';
-    h += '<a class="menu-btn" href="'+linkPren+'">📋 Visualizza la prenotazione</a>';
+    h += '<div style="font-size:15px;color:#6b7280;line-height:1.6;margin-bottom:24px">Grazie '+escH(nome)+'!<br>Ti abbiamo inviato la conferma via WhatsApp.</div>';
+
+    // CTA principale — pagina guest
+    h += '<a class="menu-btn" href="'+linkGuest+'" style="display:block;margin-bottom:12px;">📋 Visualizza la tua prenotazione</a>';
+
+    // Istruzioni salva in home
+    h += '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:16px;margin:20px 0;text-align:left;">';
+    h += '<div style="font-size:13px;font-weight:800;color:#0369a1;margin-bottom:10px;">💡 Salva questa pagina sul telefono</div>';
+    h += '<div style="font-size:13px;color:#374151;line-height:1.8;">';
+    // iOS
+    h += '<div style="margin-bottom:8px;"><strong>📱 iPhone:</strong> tocca <strong>Condividi</strong> → <strong>"Aggiungi a schermata Home"</strong></div>';
+    // Android
+    h += '<div><strong>🤖 Android:</strong> tocca il menu <strong>⋮</strong> → <strong>"Aggiungi a schermata Home"</strong></div>';
+    h += '</div>';
+    h += '<div style="margin-top:10px;font-size:12px;color:#64748b;">Potrai accedere alla tua prenotazione in qualsiasi momento, anche offline.</div>';
+    h += '</div>';
+
     if (camereSelezionate.length > 1) {
-      h += '<div style="font-size:13px;color:#6b7280;margin-top:8px">Hai prenotato '+camereSelezionate.length+' camere. Riceverai una email per ciascuna.</div>';
+      h += '<div style="font-size:13px;color:#6b7280;margin-top:8px">Hai prenotato '+camereSelezionate.length+' camere.</div>';
     }
     h += '</div>';
     h += '<div class="landing-footer">Powered by <a href="https://ristoflow-ai.com">Ristoflow Hotel</a></div>';
