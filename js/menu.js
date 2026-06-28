@@ -196,7 +196,7 @@ async function initTonyContesto() {
       .select("nome,tipo,stato,priorita,camera_numero,assegnato_nome")
       .eq("azienda_id", aziendaId).eq("data", oggi),
     supabase.from("tony_memoria")
-      .select("contenuto,categoria").eq("azienda_id", aziendaId)
+      .select("contenuto,tipo").eq("azienda_id", aziendaId)
       .order("created_at",{ascending:false}).limit(15),
     supabase.from("tony_knowledge_base")
       .select("titolo,contenuto").in("categoria",["piattaforma","hotel"]).limit(20),
@@ -297,7 +297,7 @@ async function inviaTony(testo) {
     });
 
     const data     = await res.json();
-    const risposta = data.risposta || data.content?.[0]?.text || data.error || "Nessuna risposta";
+    const risposta = data.reply || data.risposta || data.content?.[0]?.text || "Nessuna risposta";
     document.getElementById(loadId)?.remove();
     tonyHistory.push({ role:"assistant", content: risposta });
     aggiungiMsg(risposta, "tony");
@@ -306,7 +306,7 @@ async function inviaTony(testo) {
     const az = window.state?.azienda;
     if (az && /ricorda|tieni a mente|nota che|importante:/i.test(testo)) {
       await supabase.from("tony_memoria").insert({
-        azienda_id: az.id, contenuto: testo, categoria: "hotel", fonte: "chat_header",
+        azienda_id: az.id, contenuto: testo, tipo: "hotel",
       });
     }
   } catch {
