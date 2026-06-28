@@ -287,12 +287,13 @@ async function inviaTony(testo) {
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${session?.access_token}`,
+        "apikey": session?.access_token || "",
       },
       body: JSON.stringify({
         azienda_id: window.state?.azienda?.id,
-        messaggio:  testo,
-        history:    tonyHistory.slice(-8),
-        system:     tonyContesto,
+        azienda:    window.state?.azienda?.nome || "",
+        ruolo:      window.state?.ruolo || "admin",
+        messages:   tonyHistory.slice(-10),
       }),
     });
 
