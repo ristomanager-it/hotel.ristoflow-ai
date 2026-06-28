@@ -267,7 +267,7 @@ async function caricaTony(aziendaId) {
       .gte('data_checkout', oggi).lte('data_checkin', new Date(new Date(oggi).getTime()+7*864e5).toISOString().split('T')[0]),
     supabase.from('hotel_operations_task').select('nome,tipo,stato,priorita,camera_numero,assegnato_nome')
       .eq('azienda_id', aziendaId).eq('data', oggi),
-    supabase.from('tony_memoria').select('contenuto,categoria').eq('azienda_id', aziendaId).order('created_at', {ascending:false}).limit(10),
+    supabase.from('tony_memoria').select('contenuto,tipo').eq('azienda_id', aziendaId).order('created_at', {ascending:false}).limit(10),
     supabase.from('tony_knowledge_base').select('titolo,contenuto').in('categoria',['piattaforma','hotel']).limit(20),
   ]);
 
@@ -345,18 +345,25 @@ function initTony(aziendaId) {
     msgs.scrollTop = msgs.scrollHeight;
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const session = await supabase.auth.getSession();
+      const token = session?.data?.session?.access_token || '';
+
+      const res = await fetch('https://cuhcscpvhypoaplcmtjk.supabase.co/functions/v1/assistente-ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': token,
+        },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 600,
-          system: tonyContesto,
           messages: tonyHistory,
+          azienda_id: aziendaId,
+          azienda: window.state.azienda?.nome || '',
+          ruolo: window.state.ruolo || 'admin',
         })
       });
       const data = await res.json();
-      const risposta = data.content?.[0]?.text || 'Scusa, non ho capito.';
+      const risposta = data.reply || data.content?.[0]?.text || 'Scusa, non ho capito.';
       tonyHistory.push({ role:'assistant', content: risposta });
 
       document.getElementById(loadId)?.remove();
@@ -368,8 +375,7 @@ function initTony(aziendaId) {
         await supabase.from('tony_memoria').insert({
           azienda_id: aziendaId,
           contenuto:  testo,
-          categoria:  'hotel',
-          fonte:      'chat',
+          tipo:       'hotel',
         });
       }
     } catch(e) {
