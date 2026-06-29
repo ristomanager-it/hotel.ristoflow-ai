@@ -9,8 +9,6 @@ let tonyHistory  = [];
 let tonyContesto = "";
 let tonyInited   = false;
 
-// Vocale + TTS
-
 export function initMenu() {
 
   const headerRight = document.getElementById("header-right");
@@ -121,7 +119,7 @@ export function initMenu() {
         <div id="tony-init-msg" style="padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;background:#f0f9ff;color:#0f172a;align-self:flex-start;border-bottom-left-radius:4px;max-width:85%;">⏳ Caricamento contesto...</div>
       </div>
       <div id="tony-sugg" style="padding:0 14px 10px;display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;"></div>
-      <div style="padding:12px 14px;border-top:1px solid #f1f5f9;display:flex;gap:6px;flex-shrink:0;align-items:center;">
+      <div style="padding:12px 14px;border-top:1px solid #f1f5f9;display:flex;gap:8px;flex-shrink:0;">
         <input id="tony-input" placeholder="Chiedi qualcosa..." style="flex:1;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;" />
         <button id="tony-send" style="background:#0E5A7A;color:white;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;">➤</button>
       </div>
@@ -141,7 +139,6 @@ export function initMenu() {
       panel.querySelector("#tony-msgs").innerHTML = '<div style="padding:10px 14px;border-radius:14px;font-size:13px;background:#f0f9ff;color:#0f172a;align-self:flex-start;max-width:85%;">Chat pulita. Come posso aiutarti?</div>';
     };
     panel.querySelector("#tony-mem").onclick = () => apriMemoria();
-    };
 
     // Chiudi cliccando fuori
     document.addEventListener("click", e => {
@@ -338,16 +335,8 @@ function aggiungiMsg(testo, tipo) {
   div.textContent = testo;
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
-  // TTS: leggi le risposte di Tony quando voce attiva
 }
 
-
-/* ============================================================
-   🎤 VOCALE — hotel Tony
-============================================================ */
-/* ============================================================
-   🔊 TTS — hotel Tony (voce OpenAI onyx)
-============================================================ */
 // ── Memoria ───────────────────────────────────────────────────────
 async function apriMemoria() {
   const az = window.state?.azienda;
