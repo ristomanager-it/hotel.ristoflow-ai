@@ -442,9 +442,7 @@ async function hotelTtsParla(testo) {
   const pulito = testo
     .replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1")
     .replace(/^[-•]\s+/gm, "").replace(/^\d+\.\s+/gm, "")
-    .replace(/#{1,6}\s+/g, "").replace(/
-{2,}/g, ". ").replace(/
-/g, " ")
+    .replace(/#{1,6}\s+/g, "").replace(/\n{2,}/g, ". ").replace(/\n/g, " ")
     .replace(/€/g, "euro").replace(/\s{2,}/g, " ").trim();
 
   if (!pulito) return;
