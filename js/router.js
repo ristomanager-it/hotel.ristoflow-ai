@@ -19,6 +19,8 @@ const routes = {
   "hotel-ospiti":         () => import("./views/hotel-ospiti.js"),
   "hotel-marketing":      () => import("./views/hotel-marketing.js"),
   "hotel-messaggi":       () => import("./views/hotel-messaggi.js"),
+  "hotel-mansionario":    () => import("./views/hotel-mansionario.js"),
+  "hotel-operations":     () => import("./views/hotel-operations.js"),
 };
 
 /* ============================================================
