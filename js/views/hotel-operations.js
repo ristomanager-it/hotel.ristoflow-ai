@@ -106,7 +106,7 @@ async function renderTabTask(box) {
         .eq('data', data)
         .order('priorita').order('camera_numero'),
       supabase.from('dipendenti')
-        .select('id,nome,cognome,ruolo,foto_url,token_operatore,telefono')
+        .select('id,nome,cognome,ruolo,foto_url,token_operatore,telefono,costo_orario')
         .eq('azienda_id', aziendaId)
         .eq('attivo', true),
       supabase.from('hotel_camere')
@@ -234,7 +234,22 @@ async function renderTabTask(box) {
         const stato = btn.dataset.taskStato;
         const upd   = { stato };
         if (stato === 'in_corso')  upd.ora_inizio_effettiva = new Date().toISOString();
-        if (stato === 'fatto')     upd.ora_fine_effettiva   = new Date().toISOString();
+        if (stato === 'fatto') {
+          upd.ora_fine_effettiva = new Date().toISOString();
+          // Calcola durata effettiva e costo personale
+          const task = dati.tasks.find(t => String(t.id) === String(id));
+          if (task?.ora_inizio_effettiva) {
+            const minEff = Math.round((Date.now() - new Date(task.ora_inizio_effettiva).getTime()) / 60000);
+            upd.durata_effettiva_min = minEff;
+            upd.scostamento_min = minEff - (task.durata_stimata_min || 0);
+            // Costo personale: minuti effettivi × costo orario dipendente
+            const dipAssegnato = dati.dipendenti.find(d => String(d.id) === String(task.assegnato_a));
+            const costoOrario = Number(dipAssegnato?.costo_orario) || 0;
+            if (costoOrario > 0) {
+              upd.costo_effettivo = Math.round((minEff / 60) * costoOrario * 100) / 100;
+            }
+          }
+        }
         await supabase.from('hotel_operations_task').update(upd).eq('id', id);
         dati = await caricaTask(dataSelezionata);
         render(dati);
@@ -978,15 +993,19 @@ async function renderTabProduttivita(box) {
     perTipo[k].minEffettivi += e.durata_effettiva_min||0;
   });
 
-  // Per camera
+  // Per camera (con costo personale)
   const perCamera = {};
   entries.forEach(e => {
     if (!e.camera_numero) return;
     const k = e.camera_numero;
-    if (!perCamera[k]) perCamera[k] = { task:0, min:0 };
+    if (!perCamera[k]) perCamera[k] = { task:0, min:0, costo:0 };
     perCamera[k].task++;
-    perCamera[k].min += e.durata_effettiva_min||0;
+    perCamera[k].min  += e.durata_effettiva_min||0;
+    perCamera[k].costo += Number(e.costo_effettivo)||0;
   });
+
+  // Costo totale personale periodo
+  const costoTotale = entries.reduce((s,e)=>s+Number(e.costo_effettivo||0),0);
 
   const totMin     = entries.reduce((s,e)=>s+(e.durata_effettiva_min||0), 0);
   const totStimati = entries.reduce((s,e)=>s+(e.durata_stimata_min||0), 0);
@@ -1006,6 +1025,8 @@ async function renderTabProduttivita(box) {
         { icon:'⏱️', label:'Ore lavorate',    val:Math.round(totMin/60*10)/10+'h', color:'#0E5A7A' },
         { icon:'📊', label:'Efficienza',      val:totStimati>0?Math.round(totMin/totStimati*100)+'%':'—', color:'#7c3aed' },
         { icon:'⚡', label:'Scostamento medio',val:(scostMedio>0?'+':'')+scostMedio+' min', color:scostMedio>5?'#dc2626':scostMedio<-5?'#059669':'#d97706' },
+        { icon:'💰', label:'Costo personale', val:'€'+costoTotale.toFixed(2), color:'#0E5A7A' },
+        { icon:'🛏️', label:'Costo medio/camera', val:Object.keys(perCamera).length?'€'+(costoTotale/Object.keys(perCamera).length).toFixed(2):'—', color:'#7c3aed' },
       ].map(k=>`
         <div style="background:white;border:1px solid #e5e7eb;border-radius:14px;padding:16px;">
           <div style="font-size:22px;">${k.icon}</div>
@@ -1023,7 +1044,7 @@ async function renderTabProduttivita(box) {
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead>
               <tr style="background:#f8fafc;">
-                ${['Operatore','Task','Ore stimate','Ore effettive','Efficienza','Scostamento medio'].map(h=>`
+                ${['Operatore','Task','Ore stimate','Ore effettive','Efficienza','Scost. medio','Costo €'].map(h=>`
                   <th style="padding:8px 12px;text-align:${h==='Operatore'?'left':'right'};font-weight:700;color:#374151;border-bottom:1px solid #e5e7eb;">${h}</th>
                 `).join('')}
               </tr>
@@ -1040,6 +1061,7 @@ async function renderTabProduttivita(box) {
                     <td style="padding:8px 12px;text-align:right;">${Math.round(v.minEffettivi/60*10)/10}h</td>
                     <td style="padding:8px 12px;text-align:right;font-weight:700;color:${eff<=100?'#059669':'#dc2626'}">${eff}%</td>
                     <td style="padding:8px 12px;text-align:right;font-weight:700;color:${scost>5?'#dc2626':scost<-5?'#059669':'#d97706'}">${scost>0?'+':''}${scost} min</td>
+                    <td style="padding:8px 12px;text-align:right;font-weight:700;color:#059669;">${v.costo>0?'€'+v.costo.toFixed(2):'—'}</td>
                   </tr>
                 `;
               }).join('')}
@@ -1077,12 +1099,13 @@ async function renderTabProduttivita(box) {
       <div style="background:white;border:1px solid #e5e7eb;border-radius:14px;padding:20px;">
         <div style="font-size:14px;font-weight:700;margin-bottom:14px;">🛏️ Camere più impegnative</div>
         ${Object.entries(perCamera).sort(([,a],[,b])=>b.min-a.min).slice(0,8).map(([cam,v])=>`
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
             <div style="width:80px;font-size:13px;font-weight:600;">Camera ${esc(cam)}</div>
-            <div style="flex:1;background:#f1f5f9;border-radius:999px;height:14px;overflow:hidden;">
+            <div style="flex:1;background:#f1f5f9;border-radius:999px;height:14px;overflow:hidden;min-width:60px;">
               <div style="background:#7c3aed;width:${Math.round(v.min/Math.max(...Object.values(perCamera).map(x=>x.min))*100)}%;height:100%;border-radius:999px;"></div>
             </div>
             <div style="font-size:12px;font-weight:700;width:70px;text-align:right;">${Math.round(v.min/60*10)/10}h · ${v.task} task</div>
+            ${v.costo>0 ? `<div style="font-size:12px;font-weight:700;color:#059669;width:60px;text-align:right;">€${v.costo.toFixed(2)}</div>` : '<div style="width:60px;"></div>'}
           </div>
         `).join('')}
       </div>
