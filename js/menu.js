@@ -10,11 +10,6 @@ let tonyContesto = "";
 let tonyInited   = false;
 
 // Vocale + TTS
-let _hotelMicRecorder  = null;
-let _hotelMicChunks    = [];
-let _hotelMicRecording = false;
-let _hotelTtsAttivo    = false;
-let _hotelTtsAudio     = null;
 
 export function initMenu() {
 
@@ -127,9 +122,7 @@ export function initMenu() {
       </div>
       <div id="tony-sugg" style="padding:0 14px 10px;display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;"></div>
       <div style="padding:12px 14px;border-top:1px solid #f1f5f9;display:flex;gap:6px;flex-shrink:0;align-items:center;">
-        <button id="tony-mic" title="Parla con Tony" style="background:#f1f5f9;border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px;flex-shrink:0;">🎤</button>
         <input id="tony-input" placeholder="Chiedi qualcosa..." style="flex:1;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;" />
-        <button id="tony-tts" title="Attiva voce Tony" style="background:#f1f5f9;border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px;flex-shrink:0;opacity:0.4;">🔊</button>
         <button id="tony-send" style="background:#0E5A7A;color:white;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;">➤</button>
       </div>
       <div style="padding:8px 14px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;flex-shrink:0;">
@@ -148,11 +141,7 @@ export function initMenu() {
       panel.querySelector("#tony-msgs").innerHTML = '<div style="padding:10px 14px;border-radius:14px;font-size:13px;background:#f0f9ff;color:#0f172a;align-self:flex-start;max-width:85%;">Chat pulita. Come posso aiutarti?</div>';
     };
     panel.querySelector("#tony-mem").onclick = () => apriMemoria();
-    panel.querySelector("#tony-mic").onclick = async () => {
-      if (!_hotelMicRecording) await hotelStartMic();
-      else await hotelSendVoice();
     };
-    panel.querySelector("#tony-tts").onclick = () => hotelTtsToggle();
 
     // Chiudi cliccando fuori
     document.addEventListener("click", e => {
@@ -350,157 +339,15 @@ function aggiungiMsg(testo, tipo) {
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
   // TTS: leggi le risposte di Tony quando voce attiva
-  if (tipo === "tony" && _hotelTtsAttivo) hotelTtsParla(testo);
 }
 
 
 /* ============================================================
    🎤 VOCALE — hotel Tony
 ============================================================ */
-async function hotelStartMic() {
-  if (_hotelMicRecording) return;
-  if (location.protocol !== "https:" && location.hostname !== "localhost") {
-    alert("Il microfono richiede HTTPS."); return;
-  }
-  if (!navigator.mediaDevices?.getUserMedia) { alert("Browser non supporta microfono."); return; }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    _hotelMicChunks = [];
-    let mime = "audio/webm;codecs=opus";
-    if (!MediaRecorder.isTypeSupported(mime)) mime = "audio/webm";
-    if (!MediaRecorder.isTypeSupported(mime)) mime = "audio/mp4";
-    _hotelMicRecorder = new MediaRecorder(stream, { mimeType: mime });
-    _hotelMicRecorder._mimeType = mime;
-    _hotelMicRecorder.ondataavailable = e => { if (e.data.size > 0) _hotelMicChunks.push(e.data); };
-    _hotelMicRecorder.start(100);
-    _hotelMicRecording = true;
-    const btn = document.getElementById("tony-mic");
-    if (btn) { btn.textContent = "⏹"; btn.style.background = "#fee2e2"; btn.style.color = "#dc2626"; }
-    document.getElementById("tony-status").textContent = "🔴 Registrazione...";
-  } catch(e) { alert("Microfono non accessibile: " + e.message); }
-}
-
-async function hotelStopMic() {
-  return new Promise(resolve => {
-    if (!_hotelMicRecorder || _hotelMicRecorder.state === "inactive") { resolve(null); return; }
-    _hotelMicRecorder.onstop = () => {
-      const mime = _hotelMicRecorder._mimeType || "audio/webm";
-      const blob = new Blob(_hotelMicChunks, { type: mime });
-      _hotelMicRecorder.stream?.getTracks().forEach(t => t.stop());
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    };
-    _hotelMicRecorder.stop();
-    _hotelMicRecording = false;
-    const btn = document.getElementById("tony-mic");
-    if (btn) { btn.textContent = "🎤"; btn.style.background = "#f1f5f9"; btn.style.color = ""; }
-  });
-}
-
-async function hotelSendVoice() {
-  document.getElementById("tony-status").textContent = "⏳ Trascrizione...";
-  const audio = await hotelStopMic();
-  if (!audio) { document.getElementById("tony-status").textContent = "AI operativa · conosce la tua struttura"; return; }
-
-  const { data:{ session } } = await supabase.auth.getSession();
-  const token = session?.access_token || "";
-
-  try {
-    // Invia alla EF per trascrizione Whisper
-    const res = await fetch(EDGE_TONY, {
-      method: "POST",
-      headers: { "Content-Type":"application/json", "Authorization":"Bearer "+token, "apikey":token },
-      body: JSON.stringify({
-        azienda_id: window.state?.azienda?.id,
-        audio_base64: audio,
-        messages: [{ role:"user", content:"trascrivi" }]
-      })
-    });
-    const data = await res.json();
-    const trascritto = data.voice_input || "";
-    if (trascritto) {
-      document.getElementById("tony-input").value = trascritto;
-      document.getElementById("tony-status").textContent = "✍️ Trascritto — invio...";
-      setTimeout(() => inviaTony(trascritto), 300);
-    } else {
-      document.getElementById("tony-status").textContent = "⚠️ Trascrizione vuota — riprova";
-    }
-  } catch(e) {
-    document.getElementById("tony-status").textContent = "❌ Errore vocale";
-  }
-}
-
 /* ============================================================
    🔊 TTS — hotel Tony (voce OpenAI onyx)
 ============================================================ */
-async function hotelTtsParla(testo) {
-  if (!_hotelTtsAttivo || !testo) return;
-  if (_hotelTtsAudio) { _hotelTtsAudio.pause(); _hotelTtsAudio = null; }
-
-  const pulito = testo
-    .replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1")
-    .replace(/^[-•]\s+/gm, "").replace(/^\d+\.\s+/gm, "")
-    .replace(/#{1,6}\s+/g, "").replace(/\n{2,}/g, ". ").replace(/\n/g, " ")
-    .replace(/€/g, "euro").replace(/\s{2,}/g, " ").trim();
-
-  if (!pulito) return;
-  const testo1500 = pulito.length > 1500 ? pulito.substring(0, 1497) + "..." : pulito;
-
-  try {
-    const { data:{ session } } = await supabase.auth.getSession();
-    const token = session?.access_token || "";
-    const res = await fetch(EDGE_TONY, {
-      method: "POST",
-      headers: { "Content-Type":"application/json", "Authorization":"Bearer "+token, "apikey":token },
-      body: JSON.stringify({
-        azienda_id: window.state?.azienda?.id,
-        tipo_messaggio: "tts",
-        tts_testo: testo1500,
-        tts_voce: "onyx",
-        messages: []
-      })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.audio_base64) {
-        const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
-        _hotelTtsAudio = audio;
-        audio.play();
-        audio.onended = () => { _hotelTtsAudio = null; };
-        return;
-      }
-    }
-  } catch(e) { console.warn("Hotel TTS fallito:", e.message); }
-
-  // Fallback SpeechSynthesis
-  if (window.speechSynthesis) {
-    const utt = new SpeechSynthesisUtterance(testo1500);
-    utt.lang = "it-IT"; utt.rate = 1.0;
-    const voci = window.speechSynthesis.getVoices();
-    const voceIt = voci.find(v => v.lang === "it-IT" && v.localService) || voci.find(v => v.lang === "it-IT");
-    if (voceIt) utt.voice = voceIt;
-    window.speechSynthesis.speak(utt);
-  }
-}
-
-function hotelTtsToggle() {
-  _hotelTtsAttivo = !_hotelTtsAttivo;
-  const btn = document.getElementById("tony-tts");
-  if (!btn) return;
-  btn.style.opacity = _hotelTtsAttivo ? "1" : "0.4";
-  btn.title = _hotelTtsAttivo ? "Voce attiva — clicca per disattivare" : "Attiva voce Tony";
-  btn.textContent = _hotelTtsAttivo ? "🔊" : "🔇";
-  setTimeout(() => { btn.textContent = "🔊"; }, 1000);
-  if (!_hotelTtsAttivo) {
-    if (_hotelTtsAudio) { _hotelTtsAudio.pause(); _hotelTtsAudio = null; }
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
-  } else {
-    hotelTtsParla("Voce attivata. Sono pronto.");
-  }
-}
-
 // ── Memoria ───────────────────────────────────────────────────────
 async function apriMemoria() {
   const az = window.state?.azienda;
