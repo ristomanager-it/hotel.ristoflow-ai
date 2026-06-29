@@ -58,7 +58,11 @@ const MENU = [
   { hash: "hotel-marketing",    icon: "📣", label: "Marketing" },
   { hash: "hotel-messaggi",     icon: "💬", label: "Messaggistica" },
 
-  { section: "Analytics" },
+  { section: "Formazione & Personale" },
+{ hash: "hotel-mansionario",  icon: "📋", label: "Mansionario" },
+{ hash: "hotel-operations",   icon: "🔧", label: "Operations" },
+
+{ section: "Analytics" },
   { hash: "hotel-report",       icon: "📊", label: "Report & KPI" },
 ];
 
