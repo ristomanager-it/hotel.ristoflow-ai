@@ -10,6 +10,6 @@ export async function render(container) {
   }
 
   // Carica dinamicamente il modulo mansionario principale
-  const { render: renderMansionario } = await import("./bo-sala-mansionario.js?v=1");
+  const { render: renderMansionario } = await import("./bo-sala-mansionario.js?v=2");
   await renderMansionario(container);
 }
