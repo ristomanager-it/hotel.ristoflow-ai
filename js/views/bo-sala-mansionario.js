@@ -27,14 +27,79 @@ function createCard({ title, body }) {
 
 const supa = () => window.supabaseClient || window.supabase || supabaseHotelClient;
 
-const CATEGORIE = [
-  { id: "mise_en_place", label: "Mise en Place",     icon: "🍽️" },
-  { id: "accoglienza",   label: "Accoglienza",        icon: "🤝" },
-  { id: "servizio",      label: "Servizio al Tavolo", icon: "🫗" },
-  { id: "vendita",       label: "Vendita & Upselling",icon: "💬" },
-  { id: "operativo",     label: "Operativo Turno",    icon: "📋" },
-  { id: "igiene",        label: "Igiene & HACCP",     icon: "🧹" },
-];
+const CATEGORIE_PER_CONTESTO = {
+  sala: [
+    { id: "mise_en_place", label: "Mise en Place",     icon: "🍽️" },
+    { id: "accoglienza",   label: "Accoglienza",        icon: "🤝" },
+    { id: "servizio",      label: "Servizio al Tavolo", icon: "🫗" },
+    { id: "vendita",       label: "Vendita & Upselling",icon: "💬" },
+    { id: "operativo",     label: "Operativo Turno",    icon: "📋" },
+    { id: "igiene",        label: "Igiene & HACCP",     icon: "🧹" },
+  ],
+  cucina: [
+    { id: "apertura",      label: "Apertura Cucina",    icon: "🔓" },
+    { id: "celle_frigo",   label: "Celle & Frigoriferi",icon: "🧊" },
+    { id: "preparazione",  label: "Preparazione",       icon: "🔪" },
+    { id: "cottura",       label: "Cottura & Linea",    icon: "🔥" },
+    { id: "haccp",         label: "HACCP & Igiene",     icon: "🧼" },
+    { id: "chiusura",      label: "Chiusura Cucina",    icon: "🔒" },
+  ],
+  hotel: [
+    { id: "rifacimento",   label: "Rifacimento Camera", icon: "🛏️" },
+    { id: "biancheria",    label: "Cambio Biancheria",  icon: "🧺" },
+    { id: "minibar",       label: "Minibar & Frigo",    icon: "🧊" },
+    { id: "checkin_out",   label: "Check-in/out",       icon: "🔑" },
+    { id: "manutenzione",  label: "Manutenzione",       icon: "🔧" },
+    { id: "controlli",     label: "Controlli Qualità",  icon: "✅" },
+  ],
+  tasting: [
+    { id: "info_evento",    label: "Info Generali Evento", icon: "📍" },
+    { id: "allestimento",   label: "Allestimento Stand",   icon: "🏗️" },
+    { id: "accoglienza_pub",label: "Accoglienza Pubblico", icon: "👋" },
+    { id: "tracciamento",   label: "Tracciamento & Dati",  icon: "📊" },
+    { id: "vendita_evento", label: "Vendita & Cassa",      icon: "💳" },
+    { id: "smontaggio",     label: "Smontaggio",           icon: "📦" },
+  ],
+  generale: [
+    { id: "mise_en_place", label: "Mise en Place",     icon: "🍽️" },
+    { id: "accoglienza",   label: "Accoglienza",        icon: "🤝" },
+    { id: "servizio",      label: "Servizio al Tavolo", icon: "🫗" },
+    { id: "vendita",       label: "Vendita & Upselling",icon: "💬" },
+    { id: "operativo",     label: "Operativo Turno",    icon: "📋" },
+    { id: "igiene",        label: "Igiene & HACCP",     icon: "🧹" },
+  ],
+};
+
+function getCategorie() {
+  return CATEGORIE_PER_CONTESTO[getContesto()] || CATEGORIE_PER_CONTESTO.sala;
+}
+
+const ESEMPI_PER_CONTESTO = {
+  sala: [
+    "Come si apparecchia un tavolo per 4 persone a cena: prima la tovaglia, poi i piatti, poi le posate dall'esterno verso l'interno, poi i bicchieri...",
+    "Come si fa un caffè espresso: calibrare la macchina, macinatura corretta, pressare il filtro, verificare la crema, servire con zucchero e cucchiaino",
+  ],
+  cucina: [
+    "Come si apre la cucina: accendere i piani cottura, controllare temperatura celle, verificare scorte del giorno, preparare la mise en place delle stazioni...",
+    "Come si controlla una cella frigorifera: verificare temperatura max 4 gradi, controllare scadenze prodotti, FIFO, pulizia guarnizioni, registrare su scheda HACCP",
+  ],
+  hotel: [
+    "Come si rifà una camera: arieggiare, rifare il letto con lenzuola pulite, pulire bagno, controllare minibar, riordinare asciugamani, verificare le cortesie...",
+    "Come si controlla il minibar: verificare prodotti consumati, segnare su scheda addebito, ripristinare scorte, controllare scadenze, pulire interno frigo",
+  ],
+  tasting: [
+    "Come si allestisce uno stand evento: posizionare banco, esporre prodotti con cartellini prezzo, preparare materiale degustazione, verificare attrezzatura...",
+    "Come si traccia un evento: registrare ingressi, contare degustazioni offerte, segnare vendite per prodotto, raccogliere contatti per newsletter",
+  ],
+  generale: [
+    "Come si apparecchia un tavolo per 4 persone a cena...",
+    "Come si fa un caffè espresso...",
+  ],
+};
+
+function getEsempi() {
+  return ESEMPI_PER_CONTESTO[getContesto()] || ESEMPI_PER_CONTESTO.sala;
+}
 
 const DIFFICOLTA = [
   { id: "base",     label: "Base",     color: "#16a34a" },
@@ -143,7 +208,7 @@ function renderLista(filtroCategoria = "", filtroTesto = "") {
 
   // Raggruppa per categoria
   const perCat = {};
-  for (const cat of CATEGORIE) perCat[cat.id] = [];
+  for (const cat of getCategorie()) perCat[cat.id] = [];
   lista.forEach(p => {
     if (perCat[p.categoria]) perCat[p.categoria].push(p);
     else perCat["servizio"].push(p);
@@ -159,7 +224,7 @@ function renderLista(filtroCategoria = "", filtroTesto = "") {
     return;
   }
 
-  wrap.innerHTML = CATEGORIE
+  wrap.innerHTML = getCategorie()
     .filter(cat => perCat[cat.id]?.length > 0)
     .map(cat => `
       <div style="margin-bottom:24px;">
@@ -190,7 +255,7 @@ function renderLista(filtroCategoria = "", filtroTesto = "") {
 }
 
 function renderCardProcedura(p) {
-  const cat = CATEGORIE.find(c => c.id === p.categoria) || CATEGORIE[2];
+  const cat = getCategorie().find(c => c.id === p.categoria) || getCategorie()[2];
   const diff = DIFFICOLTA.find(d => d.id === p.difficolta) || DIFFICOLTA[0];
   return `
     <div data-open-proc="${esc(p.id)}" style="
@@ -500,8 +565,8 @@ async function apriModalTonyProcedura() {
       </div>
       <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#0369a1;line-height:1.5;">
         💡 <strong>Esempi:</strong><br>
-        "Come si apparecchia un tavolo per 4 persone a cena: prima la tovaglia, poi i piatti, poi le posate dall'esterno verso l'interno, poi i bicchieri..."<br>
-        "Come si fa un caffè espresso: calibrare la macchina, macinatura corretta, pressare il filtro, verificare la crema, servire con zucchero e cucchiaino"
+        "${getEsempi()[0]}"<br>
+        "${getEsempi()[1]}"
       </div>
       <textarea id="ms-tony-input" placeholder="Descrivi la procedura..." rows="5"
         style="width:100%;box-sizing:border-box;border:2px solid #e5e7eb;border-radius:12px;padding:12px;font-size:14px;resize:vertical;font-family:inherit;outline:none;margin-bottom:8px;"></textarea>
@@ -760,7 +825,7 @@ function renderShell(contesto = "sala", ctxInfo = CONTESTI.sala) {
             <input id="ms-search" class="input-pill tb-search" placeholder="Cerca procedura..." style="flex:1;min-width:160px;">
             <select id="ms-filter-cat" class="input-pill">
               <option value="">Tutte le categorie</option>
-              ${CATEGORIE.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join("")}
+              ${getCategorie().map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join("")}
             </select>
           </div>
         `
@@ -790,7 +855,7 @@ function renderShell(contesto = "sala", ctxInfo = CONTESTI.sala) {
               <div>
                 <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Categoria</label>
                 <select id="ms-f-categoria" class="input">
-                  ${CATEGORIE.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join("")}
+                  ${getCategorie().map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join("")}
                 </select>
               </div>
               <div>
