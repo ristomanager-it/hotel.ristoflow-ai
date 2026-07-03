@@ -110,19 +110,19 @@
     <div class="login-logo">🏨</div>
     <div class="login-titolo">Ristoflow Hotel</div>
     <div class="login-sub">Area operatori</div>
-    <div class="login-nome" id="login-nome">Caricamento...</div>
-    <div class="pin-display" id="pin-display">
-      <div class="pin-dot" id="dot-0"></div>
-      <div class="pin-dot" id="dot-1"></div>
-      <div class="pin-dot" id="dot-2"></div>
-      <div class="pin-dot" id="dot-3"></div>
-    </div>
-    <div class="pin-error" id="pin-error"></div>
-    <div class="pin-pad" id="pin-pad">
-      ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(n=>`
-        <button class="pin-btn${n==='⌫'?' del':''}" data-pin="${n}">${n}</button>
-      `).join('')}
-    </div>
+    <div class="login-nome" id="login-nome" style="min-height:20px;"></div>
+
+    <form id="form-login" style="width:100%;max-width:320px;" autocomplete="on">
+      <input id="login-email" type="email" placeholder="Email" autocomplete="username"
+        style="width:100%;padding:14px 16px;border:1px solid #e2e8f0;border-radius:12px;font-size:16px;margin-bottom:10px;box-sizing:border-box;">
+      <input id="login-password" type="password" placeholder="Password" autocomplete="current-password"
+        style="width:100%;padding:14px 16px;border:1px solid #e2e8f0;border-radius:12px;font-size:16px;margin-bottom:14px;box-sizing:border-box;">
+      <div class="pin-error" id="login-error"></div>
+      <button type="submit" id="btn-login"
+        style="width:100%;padding:14px;border:none;border-radius:12px;background:#0E5A7A;color:white;font-size:16px;font-weight:700;cursor:pointer;">
+        Accedi
+      </button>
+    </form>
   </div>
 </div>
 
@@ -163,6 +163,18 @@
       <span class="nav-icon">📊</span>
       Storico
     </button>
+    <button class="nav-btn" data-section="timbratura" id="nav-timbratura">
+      <span class="nav-icon">🕒</span>
+      Timbro
+    </button>
+    <button class="nav-btn" data-section="turni" id="nav-turni">
+      <span class="nav-icon">📅</span>
+      Turni
+    </button>
+    <button class="nav-btn" data-section="mansionario" id="nav-mansionario">
+      <span class="nav-icon">📖</span>
+      Manuale
+    </button>
   </nav>
 
 </div>
@@ -177,89 +189,87 @@
   const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
   const params = new URLSearchParams(window.location.search);
-  const token  = params.get('token');
   const oggi   = new Date().toISOString().split('T')[0];
 
   let operatore = null;
-  let pinInput  = '';
   let sectionAttiva = 'task';
   let timers = {};
 
   // ── LOGIN ────────────────────────────────────────────────────
   async function inizializza() {
-    if (!token) { showError('Token mancante'); return; }
+    // Se c'è già una sessione valida (accesso precedente), entra direttamente
+    const { data: { session } } = await supa.auth.getSession();
+    if (session?.user) {
+      const ok = await caricaOperatoreDaSessione(session.user.id);
+      if (ok) { entraApp(); return; }
+    }
+    // altrimenti resta sulla schermata di login
+  }
 
+  async function caricaOperatoreDaSessione(userId) {
     const { data: dip } = await supa
       .from('dipendenti')
-      .select('id,nome,cognome,pin,foto_url,azienda_id,ruolo')
-      .eq('token_operatore', token)
+      .select('id,nome,cognome,foto_url,azienda_id,ruolo')
+      .eq('user_id', userId)
       .eq('attivo', true)
       .maybeSingle();
 
-    if (!dip) { showError('Operatore non trovato'); return; }
+    if (!dip) {
+      showError('Nessun profilo dipendente collegato a questo account.');
+      return false;
+    }
     operatore = dip;
-    document.getElementById('login-nome').textContent = `Ciao, ${dip.nome}!`;
+    return true;
   }
 
   function showError(msg) {
-    document.getElementById('login-nome').textContent = msg;
-    document.getElementById('login-nome').style.color = '#dc2626';
+    document.getElementById('login-error').textContent = msg;
   }
 
-  // PIN pad
-  document.getElementById('pin-pad').addEventListener('click', e => {
-    const btn = e.target.closest('[data-pin]');
-    if (!btn) return;
-    const val = btn.dataset.pin;
-    if (val === '⌫') {
-      pinInput = pinInput.slice(0,-1);
-    } else if (val !== '' && pinInput.length < 4) {
-      pinInput += val;
-    }
-    aggiornaDisplay();
-    if (pinInput.length === 4) verificaPin();
+  document.getElementById('form-login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const btn = document.getElementById('btn-login');
+
+    if (!email || !password) { showError('Inserisci email e password'); return; }
+
+    showError('');
+    btn.disabled = true;
+    btn.textContent = 'Accesso...';
+
+    const { data, error } = await supa.auth.signInWithPassword({ email, password });
+
+    btn.disabled = false;
+    btn.textContent = 'Accedi';
+
+    if (error) { showError('Credenziali non valide'); return; }
+
+    const ok = await caricaOperatoreDaSessione(data.user.id);
+    if (ok) entraApp();
+    else await supa.auth.signOut();
   });
 
-  function aggiornaDisplay() {
-    for (let i=0; i<4; i++) {
-      const dot = document.getElementById(`dot-${i}`);
-      dot.className = 'pin-dot' + (i < pinInput.length ? ' filled' : '');
-    }
-  }
-
-  async function verificaPin() {
-    if (!operatore) return;
-    if (String(operatore.pin) === String(pinInput)) {
-      // PIN corretto → entra
-      document.getElementById('screen-login').classList.remove('active');
-      document.getElementById('screen-app').classList.add('active');
-      document.getElementById('op-nome-header').textContent = `${operatore.nome} ${operatore.cognome||''}`;
-      document.getElementById('op-data-header').textContent = formatData(oggi);
-      if (operatore.foto_url) {
-        document.getElementById('op-avatar').innerHTML = `<img src="${operatore.foto_url}" alt="">`;
-      } else {
-        document.getElementById('op-avatar').textContent = operatore.nome[0];
-      }
-      caricaSezione('task');
+  function entraApp() {
+    document.getElementById('screen-login').classList.remove('active');
+    document.getElementById('screen-app').classList.add('active');
+    document.getElementById('op-nome-header').textContent = `${operatore.nome} ${operatore.cognome||''}`;
+    document.getElementById('op-data-header').textContent = formatData(oggi);
+    if (operatore.foto_url) {
+      document.getElementById('op-avatar').innerHTML = `<img src="${operatore.foto_url}" alt="">`;
     } else {
-      // PIN errato
-      pinInput = '';
-      aggiornaDisplay();
-      for (let i=0; i<4; i++) document.getElementById(`dot-${i}`).className = 'pin-dot error';
-      document.getElementById('pin-error').textContent = 'PIN non corretto';
-      setTimeout(() => {
-        for (let i=0; i<4; i++) document.getElementById(`dot-${i}`).className = 'pin-dot';
-        document.getElementById('pin-error').textContent = '';
-      }, 1000);
+      document.getElementById('op-avatar').textContent = operatore.nome[0];
     }
+    caricaSezione('task');
   }
 
   // Logout
-  document.getElementById('btn-logout').onclick = () => {
-    pinInput = '';
-    aggiornaDisplay();
+  document.getElementById('btn-logout').onclick = async () => {
+    await supa.auth.signOut();
     document.getElementById('screen-app').classList.remove('active');
     document.getElementById('screen-login').classList.add('active');
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
     Object.values(timers).forEach(clearInterval);
   };
 
@@ -278,10 +288,13 @@
     const content = document.getElementById('op-content');
     content.innerHTML = '<div style="text-align:center;padding:48px;color:#94a3b8;">⏳</div>';
     switch(sezione) {
-      case 'task':      await renderTask(content);      break;
-      case 'colazione': await renderColazione(content); break;
-      case 'minibar':   await renderMinibar(content);   break;
-      case 'storico':   await renderStorico(content);   break;
+      case 'task':        await renderTask(content);        break;
+      case 'colazione':   await renderColazione(content);   break;
+      case 'minibar':     await renderMinibar(content);     break;
+      case 'storico':     await renderStorico(content);     break;
+      case 'timbratura':  await renderTimbratura(content);  break;
+      case 'turni':       await renderTurni(content);       break;
+      case 'mansionario': await renderMansionario(content); break;
     }
   }
 
@@ -631,6 +644,209 @@
       `).join('')}
       ${!entries.length?'<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">Nessun task completato</div></div>':''}
     `;
+  }
+
+  // ── TIMBRATURA ───────────────────────────────────────────────
+  async function renderTimbratura(content) {
+    const { data: ultima } = await supa
+      .from('timbrature')
+      .select('tipo, timestamp')
+      .eq('azienda_id', operatore.azienda_id)
+      .eq('dipendente_id', operatore.id)
+      .order('timestamp', { ascending:false })
+      .limit(1)
+      .maybeSingle();
+
+    const ultimoTipo = ultima?.tipo || null;
+    let stato = 'Fuori turno';
+    let primaryTipo = 'inizio_turno';
+    let primaryLabel = '🟢 Inizia turno';
+    let pausaAbilitata = false;
+    let fineAbilitata = false;
+
+    if (ultimoTipo === 'inizio_turno' || ultimoTipo === 'fine_pausa') {
+      stato = 'In turno';
+      primaryTipo = 'inizio_pausa';
+      primaryLabel = '⏸ Inizia pausa';
+      pausaAbilitata = false;
+      fineAbilitata = true;
+    } else if (ultimoTipo === 'inizio_pausa') {
+      stato = 'In pausa';
+      primaryTipo = 'fine_pausa';
+      primaryLabel = '▶️ Fine pausa';
+      fineAbilitata = true;
+    } else if (ultimoTipo === 'fine_turno' || !ultimoTipo) {
+      stato = 'Fuori turno';
+      primaryTipo = 'inizio_turno';
+      primaryLabel = '🟢 Inizia turno';
+      fineAbilitata = false;
+    }
+
+    content.innerHTML = `
+      <div class="card" style="text-align:center;padding:24px 16px;">
+        <div style="font-size:13px;color:#64748b;font-weight:600;margin-bottom:6px;">Stato attuale</div>
+        <div style="font-size:22px;font-weight:800;margin-bottom:20px;color:${stato==='In turno'?'#059669':stato==='In pausa'?'#d97706':'#64748b'};">${stato}</div>
+
+        <button id="btn-timbra-primary" class="task-btn inizia" style="width:100%;margin-bottom:10px;">${primaryLabel}</button>
+        <button id="btn-timbra-fine" class="task-btn secondary" style="width:100%;" ${fineAbilitata?'':'disabled'}>🔴 Fine turno</button>
+
+        ${ultima?.timestamp ? `<div style="font-size:11px;color:#94a3b8;margin-top:14px;">Ultima timbratura: ${new Date(ultima.timestamp).toLocaleString('it-IT')}</div>` : ''}
+      </div>
+    `;
+
+    async function timbra(tipo) {
+      const payload = {
+        azienda_id: operatore.azienda_id,
+        dipendente_id: operatore.id,
+        dip_nome: `${operatore.nome} ${operatore.cognome||''}`.trim(),
+        tipo,
+        canale: 'hotel_operatore',
+        timestamp: new Date().toISOString(),
+        device_info: navigator.userAgent || 'unknown',
+      };
+      const { error } = await supa.from('timbrature').insert([payload]);
+      if (error) { toast('Errore: ' + error.message); return; }
+      toast('✅ Timbratura registrata');
+      renderTimbratura(content);
+    }
+
+    document.getElementById('btn-timbra-primary').onclick = () => timbra(primaryTipo);
+    document.getElementById('btn-timbra-fine').onclick = () => timbra('fine_turno');
+  }
+
+  // ── TURNI ────────────────────────────────────────────────────
+  async function renderTurni(content) {
+    const { data: dip } = await supa
+      .from('dipendenti')
+      .select('turni')
+      .eq('id', operatore.id)
+      .maybeSingle();
+
+    const turni = Array.isArray(dip?.turni) ? dip.turni : [];
+    const GIORNI = [
+      { key:'lunedi', label:'Lunedì' }, { key:'martedi', label:'Martedì' },
+      { key:'mercoledi', label:'Mercoledì' }, { key:'giovedi', label:'Giovedì' },
+      { key:'venerdi', label:'Venerdì' }, { key:'sabato', label:'Sabato' },
+      { key:'domenica', label:'Domenica' },
+    ];
+    const perGiorno = {};
+    GIORNI.forEach(g => perGiorno[g.key] = []);
+    turni.forEach(t => (t.giorni||[]).forEach(g => { if (perGiorno[g]) perGiorno[g].push({inizio:t.inizio, fine:t.fine}); }));
+
+    content.innerHTML = `
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px;">📅 I miei turni</div>
+      ${!turni.length ? `
+        <div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Nessun turno impostato</div><div class="empty-sub">Contatta l'amministratore</div></div>
+      ` : GIORNI.map(g => {
+        const slot = perGiorno[g.key];
+        return `
+          <div style="background:white;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-weight:700;font-size:14px;">${g.label}</div>
+            <div style="font-size:13px;color:${slot.length?'#1e293b':'#cbd5e1'};text-align:right;">
+              ${slot.length ? slot.map(s=>`${s.inizio||'?'} – ${s.fine||'?'}`).join('<br>') : 'Riposo'}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+  }
+
+  // ── MANSIONARIO (versione semplificata: studio + conferma lettura, senza quiz) ──
+  async function renderMansionario(content) {
+    const { data: procedure } = await supa
+      .from('procedure_sala')
+      .select('*')
+      .eq('azienda_id', operatore.azienda_id)
+      .eq('attivo', true)
+      .in('contesto', ['hotel', 'generale'])
+      .order('categoria').order('nome');
+
+    if (!procedure?.length) {
+      content.innerHTML = '<div class="empty-state"><div class="empty-icon">📖</div><div class="empty-title">Nessuna procedura disponibile</div></div>';
+      return;
+    }
+
+    const oggiStr = oggi;
+    const { data: esecuzioni } = await supa
+      .from('procedure_sala_esecuzioni')
+      .select('procedura_id, completata')
+      .eq('azienda_id', operatore.azienda_id)
+      .eq('dipendente_id', operatore.id)
+      .eq('data_esecuzione', oggiStr);
+
+    const fattiMap = {};
+    (esecuzioni||[]).forEach(e => fattiMap[e.procedura_id] = e.completata);
+
+    content.innerHTML = `
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px;">📖 Manuale operativo</div>
+      ${procedure.map(p => `
+        <div class="card" style="margin-bottom:10px;cursor:pointer;" data-apri-procedura="${p.id}">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:700;font-size:14px;">${esc(p.nome)}</div>
+              <div style="font-size:11px;color:#64748b;margin-top:2px;">${esc(p.categoria||'')}</div>
+            </div>
+            <div style="font-size:20px;">${fattiMap[p.id] ? '✅' : '▶️'}</div>
+          </div>
+        </div>
+      `).join('')}
+    `;
+
+    content.querySelectorAll('[data-apri-procedura]').forEach(card => {
+      card.onclick = () => apriProcedura(content, card.dataset.apriProcedura);
+    });
+  }
+
+  async function apriProcedura(content, proceduraId) {
+    const [{ data: procedura }, { data: fasi }] = await Promise.all([
+      supa.from('procedure_sala').select('*').eq('id', proceduraId).single(),
+      supa.from('procedure_sala_fasi').select('*').eq('procedura_id', proceduraId).order('ordine'),
+    ]);
+
+    content.innerHTML = `
+      <button id="btn-torna-mansionario" style="background:#f1f5f9;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px;">← Torna al manuale</button>
+      <div style="font-size:18px;font-weight:800;margin-bottom:4px;">${esc(procedura?.nome||'')}</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:16px;">${esc(procedura?.descrizione||'')}</div>
+
+      ${(fasi||[]).map((f,i) => `
+        <div class="card" style="margin-bottom:10px;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px;">${i+1}. ${esc(f.titolo||'')}</div>
+          <div style="font-size:13px;color:#374151;white-space:pre-wrap;">${esc(f.descrizione_operativa||'')}</div>
+          ${f.tip_pro ? `<div style="font-size:12px;color:#7c3aed;background:#f3e8ff;border-radius:8px;padding:8px 10px;margin-top:8px;">💡 ${esc(f.tip_pro)}</div>` : ''}
+          ${(f.media_urls||[]).map(url => (/\.(mp4|mov|webm)(\?|$)/i.test(url)
+            ? `<video src="${url}" controls style="width:100%;border-radius:8px;margin-top:8px;"></video>`
+            : `<img src="${url}" style="width:100%;border-radius:8px;margin-top:8px;">`)).join('')}
+        </div>
+      `).join('')}
+
+      <button id="btn-confermo-letto" class="task-btn completa" style="width:100%;margin-top:8px;">✅ Ho letto e confermo</button>
+    `;
+
+    document.getElementById('btn-torna-mansionario').onclick = () => renderMansionario(content);
+    document.getElementById('btn-confermo-letto').onclick = async () => {
+      const payload = {
+        procedura_id: proceduraId,
+        azienda_id: operatore.azienda_id,
+        dipendente_id: operatore.id,
+        dipendente_nome: `${operatore.nome} ${operatore.cognome||''}`.trim(),
+        data_esecuzione: oggi,
+        completata: true,
+        firmata_alle: new Date().toISOString(),
+      };
+      const { data: esistente } = await supa
+        .from('procedure_sala_esecuzioni')
+        .select('id')
+        .eq('procedura_id', proceduraId)
+        .eq('dipendente_id', operatore.id)
+        .eq('data_esecuzione', oggi)
+        .maybeSingle();
+
+      if (esistente?.id) await supa.from('procedure_sala_esecuzioni').update(payload).eq('id', esistente.id);
+      else await supa.from('procedure_sala_esecuzioni').insert(payload);
+
+      toast('✅ Confermato');
+      renderMansionario(content);
+    };
   }
 
   // ── UTILS ────────────────────────────────────────────────────
