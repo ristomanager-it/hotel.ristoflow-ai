@@ -421,6 +421,45 @@ function renderEditor(prenotazione, aziendaId, container) {
     </div>
   `;
 
+  // Aggiunge una camera alla stessa prenotazione: nome, email, telefono e
+  // documento si ricopiano da soli, si sceglie solo la camera nuova.
+  const btnCam = editor.querySelector("#btn-aggiungi-camera");
+  if (btnCam) btnCam.onclick = async () => {
+    const sel = editor.querySelector("#ed-camera");
+    const libere = Array.from(sel.options)
+      .filter(o => o.value && o.value !== sel.value);
+
+    if (!libere.length) { alert("Non ci sono altre camere disponibili."); return; }
+
+    const scelta = window.prompt(
+      "Quale camera aggiungi?\n\n" +
+      libere.map((o, i) => (i + 1) + ") " + o.textContent.trim()).join("\n") +
+      "\n\nScrivi il numero:");
+    if (!scelta) return;
+
+    const idx = parseInt(scelta, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= libere.length) { alert("Numero non valido."); return; }
+
+    btnCam.disabled = true;
+    btnCam.textContent = "Aggiungo…";
+    try {
+      const { data, error } = await sb.rpc("aggiungi_camera", {
+        p_prenotazione: prenId,
+        p_camera: libere[idx].value,
+        p_prezzo_notte: parseFloat(libere[idx].dataset.prezzo || 0) || null
+      });
+      if (error) throw error;
+      alert("Camera aggiunta: " + libere[idx].textContent.trim() +
+            "\nStessi dati ospite, stesse date.");
+      window.location.hash = "#/hotel-prenotazioni";
+      location.reload();
+    } catch (e) {
+      alert("Non riuscito: " + (e.message || e));
+      btnCam.disabled = false;
+      btnCam.textContent = "🛏️ Aggiungi camera";
+    }
+  };
+
   // Calcolo automatico prezzi
   function ricalcola() {
     const camOpt  = editor.querySelector("#ed-camera").selectedOptions[0];
