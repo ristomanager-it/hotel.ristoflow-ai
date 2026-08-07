@@ -409,6 +409,10 @@ function renderEditor(prenotazione, aziendaId, container) {
       <div id="ed-error" style="color:var(--danger);font-size:13px;margin-top:12px;"></div>
       <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
         <button class="btn btn-primary" id="btn-salva">💾 ${isEdit ? "Salva modifiche" : "Crea prenotazione"}</button>
+        ${isEdit
+          ? `<button class="btn btn-ghost" id="btn-aggiungi-camera">🛏️ Aggiungi camera</button>`
+          : ""
+        }
         ${isEdit && ["confermata","preventivo"].includes(p.stato)
           ? `<button class="btn btn-success" onclick="window.location.hash='#/hotel-checkin?id=${p.id}'">🛎️ Vai a Check-in</button>`
           : ""
