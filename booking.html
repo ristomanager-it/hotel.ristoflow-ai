@@ -331,11 +331,10 @@
     camere = db || [];
 
     // Prenotazioni sovrappanti
-    var { data: prenDB } = await supa.from('hotel_prenotazioni')
-      .select('camera_id').eq('azienda_id', azId)
-      .not('stato','in','(cancellata,noshow)')
-      .lt('data_checkin', checkout).gt('data_checkout', checkin);
-    var occupate = new Set((prenDB||[]).map(function(p){ return p.camera_id; }));
+    // solo gli id delle camere gia' impegnate: nessun dato degli ospiti
+    var { data: occDB } = await supa.rpc('hotel_camere_occupate',
+      { p_azienda: azId, p_checkin: checkin, p_checkout: checkout });
+    var occupate = new Set(occDB || []);
 
     // Rimuovi camere già selezionate dall'utente (per multi-camera)
     var selIds = new Set(camereSelezionate.map(function(c){ return c.id; }));
@@ -621,20 +620,13 @@
         if (strErr) throw new Error(strErr.message);
         // Aggiorna stato prenotazione
         for (var j=0; j<tokens.length; j++) {
-          // Calcola importo pagato per questa camera
-          var importoCam = parseFloat(camereSelezionate[j]?.prezzo_base || 0) * notti();
-          var accontoCam = modalitaPagamento === 'caparra' 
-            ? Math.round(importoCam * capPerc / 100 * 100) / 100 
-            : importoCam;
-          var saldoCam = importoCam - accontoCam;
-          
-          await supa.from('hotel_prenotazioni').update({ 
-            stato: 'confermata', 
-            stato_pagamento: saldoCam > 0 ? 'acconto_pagato' : 'pagato',
-            acconto: accontoCam,
-            saldo_residuo: saldoCam,
-            stripe_payment_intent_id: paymentIntent?.id || null,
-          }).eq('token_pubblico', tokens[j]);
+          // gli importi li rifa' il database sul prezzo della prenotazione:
+          // dal browser arriva solo l'esito del pagamento
+          await supa.rpc('hotel_pagamento_registrato', {
+            p_token: tokens[j],
+            p_payment_intent: paymentIntent?.id || null,
+            p_caparra_perc: modalitaPagamento === 'caparra' ? capPerc : 100
+          });
         }
       }
 
