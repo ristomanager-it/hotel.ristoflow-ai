@@ -249,11 +249,9 @@
     // INIT
     // ════════════════════════════════════════════════════════════
     async function init() {
-      var res = await supa
-        .from("hotel_prenotazioni")
-        .select("*, aziende_pubbliche(nome, logo_url, cover_url, foto_galleria, telefono, indirizzo, citta, colore_brand, font_family, font_size, territorio)")
-        .eq("token_pubblico", token)
-        .maybeSingle();
+      // la tabella non si legge piu' in diretta: senza il token non si vede niente
+      var rpc = await supa.rpc("hotel_prenotazione_pubblica", { p_token: token });
+      var res = { data: (rpc.data && rpc.data.ok) ? rpc.data.prenotazione : null, error: rpc.error };
 
       // Carica configurazione hotel per servizi e link
       var aziendaIdPren = res.data ? res.data.azienda_id : null;
@@ -286,9 +284,9 @@
 
       // Stripe redirect
       if (sessionId) {
-        await supa.from("hotel_prenotazioni").update({ stato_pagamento: "verificando" }).eq("token_pubblico", token);
-        var res2 = await supa.from("hotel_prenotazioni").select("*").eq("token_pubblico", token).maybeSingle();
-        if (res2.data) prenotazione = Object.assign(prenotazione, res2.data);
+        await supa.rpc("hotel_pagamento_verificando", { p_token: token });
+        var rpc2 = await supa.rpc("hotel_prenotazione_pubblica", { p_token: token });
+        if (rpc2.data && rpc2.data.ok) prenotazione = Object.assign(prenotazione, rpc2.data.prenotazione);
       }
 
       render(hotelCfg);
@@ -778,18 +776,14 @@
       var note = document.getElementById("mod-note").value.trim();
 
       var notti = calcolaNotti(checkin, checkout);
-      var res = await supa.from("hotel_prenotazioni").update({
-        data_checkin: checkin,
-        data_checkout: checkout,
-        adulti: ospiti,
-        richieste_speciali: note,
-        modificata_dal_cliente: true,
-        modificata_il: new Date().toISOString()
-      }).eq("token_pubblico", token);
+      var res = await supa.rpc("hotel_prenotazione_modifica", {
+        p_token: token, p_checkin: checkin, p_checkout: checkout,
+        p_ospiti: ospiti, p_note: note
+      });
 
-      if (res.error) {
+      if (res.error || !res.data || !res.data.ok) {
         btn.disabled = false; btn.textContent = "Salva modifiche";
-        alert("Errore nel salvataggio. Riprova.");
+        alert((res.data && res.data.errore) || "Errore nel salvataggio. Riprova.");
         return;
       }
       prenotazione.data_checkin = checkin;
@@ -823,16 +817,14 @@
         }
       }
 
-      var res = await supa.from("hotel_prenotazioni").update({
-        checkin_online_completato: true,
-        documento_url: docUrl || null,
-        firma_digitale_url: firmaUrl || null,
-        ora_arrivo_prevista: oraArrivo || null,
-      }).eq("token_pubblico", token);
+      var res = await supa.rpc("hotel_checkin_online", {
+        p_token: token, p_documento_url: docUrl || null,
+        p_firma_url: firmaUrl || null, p_ora_arrivo: oraArrivo || null
+      });
 
-      if (res.error) {
+      if (res.error || !res.data || !res.data.ok) {
         btn.disabled = false; btn.textContent = "✅ Completa check-in online";
-        alert("Errore. Riprova.");
+        alert((res.data && res.data.errore) || "Errore. Riprova.");
         return;
       }
       prenotazione.checkin_online_completato = true;
@@ -844,11 +836,8 @@
       var btn = document.getElementById("btn-conferma-cancella");
       btn.disabled = true; btn.textContent = "Cancellazione...";
       var motivo = document.getElementById("cancella-motivo").value.trim();
-      var res = await supa.from("hotel_prenotazioni").update({
-        stato: "annullata",
-        motivo_cancellazione: motivo || null
-      }).eq("token_pubblico", token);
-      if (res.error) {
+      var res = await supa.rpc("hotel_prenotazione_cancella", { p_token: token, p_motivo: motivo || null });
+      if (res.error || !res.data || !res.data.ok) {
         btn.disabled = false; btn.textContent = "Sì, cancella prenotazione";
         alert("Errore nella cancellazione. Riprova.");
         return;
