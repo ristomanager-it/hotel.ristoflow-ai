@@ -5,6 +5,69 @@ import { supabase } from "./supabaseClient.js";
 
 // 12/11/2026: lo stesso Tony di Ristoflow (tutte le istruzioni, i metodi e gli strumenti), non piu' il vecchio assistente-ai
 const EDGE_TONY = "https://cuhcscpvhypoaplcmtjk.supabase.co/functions/v1/tony";
+// 12/11/2026: campagne, post, pagine e promo vanno al reparto campagne di Tony (come nell'app Ristoflow),
+// che propone e crea solo dopo il tocco su Conferma
+const EDGE_CAMPAGNE = "https://cuhcscpvhypoaplcmtjk.supabase.co/functions/v1/tony-campagne-chat";
+const RE_CAMPAGNE_HOTEL = /campagn|facebook|instagram|\bmeta\b|sponsorizz|inserzion|pubblicit|\bads\b|google ads|adwords|\bpromo|landing|\bpost\b|pixel|visitator|statistich|riempire le camere|notti vuote|camere libere da vendere/i;
+function contestoHotel() {
+  const az = window.state?.azienda || {};
+  return "[Contesto: richiesta dall'app HOTEL di Ristoflow, per l'hotel " + (az.nome || "") + ". Si vendono CAMERE (notti, pacchetti camera + cena o esperienza). " +
+    "Pagina di prenotazione camere: https://hotel.ristoflow-ai.com/booking.html?azienda=" + (az.id || "") + " — usala come destinazione delle campagne camere, salvo pagina dedicata. " +
+    "Obiettivo: prenotazioni dirette nelle notti da riempire, non sui portali.]";
+}
+function mostraAzioniTony(data) {
+  const lista = (Array.isArray(data?.azioni) && data.azioni.length) ? data.azioni : (data?.azione ? [data.azione] : []);
+  const msgs = document.getElementById("tony-msgs");
+  if (!msgs) return;
+  for (const az of lista) {
+    if (!az || !az.firma) continue;
+    const card = document.createElement("div");
+    card.style.cssText = "align-self:flex-start;max-width:85%;border:1px solid #bfdbfe;background:#eff6ff;border-radius:12px;padding:10px;font-size:13px;";
+    const t = document.createElement("div");
+    t.style.cssText = "font-weight:700;color:#0E5A7A;margin-bottom:8px;white-space:pre-wrap;";
+    t.textContent = az.riepilogo || "Proposta di Tony";
+    const ok = document.createElement("button");
+    ok.textContent = az.tipo === "post" ? (az.dati && az.dati.quando === "ora" ? "📤 Pubblica ora" : "🗓️ Programma") : "✅ Conferma";
+    ok.style.cssText = "background:#0E5A7A;color:#fff;border:0;border-radius:10px;padding:9px 14px;font-weight:800;margin-right:8px;";
+    const no = document.createElement("button");
+    no.textContent = "Annulla";
+    no.style.cssText = "background:#e2e8f0;color:#0f172a;border:0;border-radius:10px;padding:9px 14px;font-weight:700;";
+    no.onclick = () => { card.innerHTML = "<span style='color:#64748b'>Annullato.</span>"; };
+    ok.onclick = async () => {
+      ok.disabled = true; no.disabled = true; ok.textContent = "Salvo…";
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const tok = session?.access_token || "";
+        const fn = az.tipo === "campagna_pro" ? "tony-campagne-pro"
+          : ["campagna", "stato_campagna", "post", "parole_google"].includes(az.tipo) ? "tony-campagne-chat"
+          : ["modello_whatsapp", "attiva_modello_whatsapp"].includes(az.tipo) ? "tony-messaggi" : "tony";
+        const r = await fetch("https://cuhcscpvhypoaplcmtjk.supabase.co/functions/v1/" + fn, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tok, "apikey": tok },
+          body: JSON.stringify({ azienda_id: window.state?.azienda?.id, sede_id: window.state?.sedeAttiva?.id || null, ruolo: window.state?.ruolo || "admin", conferma: az }),
+        });
+        const j = await r.json().catch(() => ({}));
+        card.innerHTML = "";
+        const esito = document.createElement("div");
+        esito.style.cssText = "font-weight:700;color:" + (j.success ? "#047857" : "#b91c1c") + ";white-space:pre-wrap;";
+        esito.textContent = j.reply || j.error || "Non riuscito.";
+        card.appendChild(esito);
+        if (j.success && j.landing) {
+          const lp = document.createElement("button");
+          lp.textContent = az.tipo === "post" ? "👁 Vedi il post" : "👁 Vedi la pagina";
+          lp.style.cssText = "margin-top:8px;background:#7a3b1d;color:#fff;border:0;border-radius:10px;padding:9px 14px;font-weight:800;";
+          lp.onclick = () => window.open(j.landing, "_blank");
+          card.appendChild(lp);
+        }
+      } catch (e) {
+        card.innerHTML = "<span style='color:#b91c1c'>Non riuscito: " + String(e && e.message || e) + "</span>";
+      }
+    };
+    card.appendChild(t); card.appendChild(ok); card.appendChild(no);
+    msgs.appendChild(card);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+}
 
 let tonyHistory  = [];
 let tonyContesto = "";
@@ -288,7 +351,10 @@ async function inviaTony(testo) {
     console.log("TONY: azienda_id", window.state?.azienda?.id);
     console.log("TONY: messages", tonyHistory.slice(-10));
 
-    const res = await fetch(EDGE_TONY, {
+    const ultimoTesto = String(tonyHistory.slice(-1)[0]?.content || "");
+    const vaCampagne = RE_CAMPAGNE_HOTEL.test(ultimoTesto) || window.__tonyHotelCampagne === true;
+    const messaggiDaMandare = [{ role: "user", content: contestoHotel() }, { role: "assistant", content: "Ok, lavoro per l'hotel." }].concat(tonyHistory.slice(-10));
+    const res = await fetch(vaCampagne ? EDGE_CAMPAGNE : EDGE_TONY, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -299,7 +365,7 @@ async function inviaTony(testo) {
         azienda_id: window.state?.azienda?.id,
         azienda:    window.state?.azienda?.nome || "",
         ruolo:      window.state?.ruolo || "admin",
-        messages:   tonyHistory.slice(-10),
+        messages:   messaggiDaMandare,
         sede_id:    window.state?.sedeAttiva?.id || null,
         app:        "hotel",   // Tony sa che sta parlando dall'app hotel: camere, ospiti, arrivi e partenze
       }),
@@ -312,6 +378,9 @@ async function inviaTony(testo) {
     document.getElementById(loadId)?.remove();
     tonyHistory.push({ role:"assistant", content: risposta });
     aggiungiMsg(risposta, "tony");
+    mostraAzioniTony(data);
+    // se il reparto campagne sta aspettando una risposta (es. "si'", il budget), il messaggio dopo resta li'
+    window.__tonyHotelCampagne = vaCampagne && !(data && (data.azioni || data.azione));
 
     // Auto-memoria
     const az = window.state?.azienda;
