@@ -3,7 +3,8 @@
 
 import { supabase } from "./supabaseClient.js";
 
-const EDGE_TONY = "https://cuhcscpvhypoaplcmtjk.supabase.co/functions/v1/assistente-ai";
+// 12/11/2026: lo stesso Tony di Ristoflow (tutte le istruzioni, i metodi e gli strumenti), non piu' il vecchio assistente-ai
+const EDGE_TONY = "https://cuhcscpvhypoaplcmtjk.supabase.co/functions/v1/tony";
 
 let tonyHistory  = [];
 let tonyContesto = "";
