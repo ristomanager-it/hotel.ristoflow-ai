@@ -300,6 +300,8 @@ async function inviaTony(testo) {
         azienda:    window.state?.azienda?.nome || "",
         ruolo:      window.state?.ruolo || "admin",
         messages:   tonyHistory.slice(-10),
+        sede_id:    window.state?.sedeAttiva?.id || null,
+        app:        "hotel",   // Tony sa che sta parlando dall'app hotel: camere, ospiti, arrivi e partenze
       }),
     });
 
