@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient.js";
-import { initMenu } from "./menu.js?v=3";
+import { initMenu } from "./menu.js?v=4";
 
 /* ============================================================
    ROUTES
