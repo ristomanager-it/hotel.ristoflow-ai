@@ -496,7 +496,7 @@ function renderEditor(prenotazione, aziendaId, container) {
   }
 
   // Aggiorna disponibilità camere quando cambiano le date
-  async function aggiornaDisponibilita() {
+  async function aggiornaDisponibilita(ricalcolaPrezzo = true) {
     const ci = editor.querySelector("#ed-checkin").value;
     const co = editor.querySelector("#ed-checkout").value;
     const info = editor.querySelector("#disponibilita-info");
@@ -540,7 +540,8 @@ function renderEditor(prenotazione, aziendaId, container) {
     }
 
     // Ricalcola prezzo con tariffe cumulabili
-    await ricalcolaConTariffe(ci, co);
+    // All'apertura di una prenotazione esistente NON ricalcolare: resta il prezzo salvato
+    if (ricalcolaPrezzo) await ricalcolaConTariffe(ci, co);
   }
 
   // Calcolo prezzo con tariffe cumulabili
@@ -614,7 +615,7 @@ function renderEditor(prenotazione, aziendaId, container) {
   });
 
   // Trigger iniziale se stiamo modificando
-  if (p.data_checkin && p.data_checkout) aggiornaDisponibilita();
+  if (p.data_checkin && p.data_checkout) aggiornaDisponibilita(!prenotazione?.id);
 
   // Toggle colazione
   editor.querySelector("#ed-colazione").onchange = () => {
